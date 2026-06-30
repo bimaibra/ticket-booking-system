@@ -114,6 +114,61 @@ components:
         price:
           type: number
 
+    OrderDetail:
+      type: object
+      properties:
+        id:
+          type: number
+        ticket_id:
+          type: number
+        price:
+          type: number
+        quantity:
+          type: integer
+        subtotal:
+          type: number
+    Order:
+      type: object
+      properties:
+        id:
+          type: number
+        user_id:
+          type: number
+        total_amount:
+          type: number
+        status:
+          type: string
+          enum:
+          - PENDING
+          - SUCCESS
+          - EXPIRED
+          - CANCELLED 
+        created_at:
+          type: string
+          format: date-time
+        expired_at:
+          type: string
+          format: date-time
+        idempotency_key:
+          type: string
+          format: uuid 
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderDetail'
+    CreateOrderRequest:
+      type: object
+      properties:
+        items:                 
+          type: array
+          items:               
+            type: object
+            properties:
+              ticket_id:
+                type: integer
+              quantity:
+                type: integer
+
 paths: 
   /auth/register:
     post:
@@ -192,3 +247,118 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /events/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true 
+      schema: 
+        type: integer
+    get:
+      summary: Get event detail by ID
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      summary: Update an event by id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      summary: Delete an event by id
+      responses:
+        '200':
+          description: Event deleted successfully
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /events/{id}/tickets:
+    parameters:
+    - name: id
+      in: path
+      required: true 
+      schema: 
+        type: integer
+    get:
+      summary: Get all tickets for a specific event
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ticket'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create a new ticket for an event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'        
+  
+  

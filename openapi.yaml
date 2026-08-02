@@ -3,6 +3,8 @@ info:
   title: ticket booking system
   version: 1.0.0
   description: documentation API using yaml
+security:
+  - bearerAuth: []
 
 servers: 
   - url: http://localhost:3001
@@ -113,7 +115,6 @@ components:
           type: integer
         price:
           type: number
-
     OrderDetail:
       type: object
       properties:
@@ -168,11 +169,18 @@ components:
                 type: integer
               quantity:
                 type: integer
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
 paths: 
   /auth/register:
     post:
+      operationId: registerUser
       summary: Register a new user
+      security: []
       requestBody:
         required: true
         content:
@@ -194,7 +202,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /auth/login:
     post:
-      summary: User LoginRequest
+      operationId: loginUser
+      summary: User Login Request
+      security: []
       requestBody:
         required: true
         content:
@@ -216,6 +226,7 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /events:
     get:
+      operationId: getEvents
       summary: Get all events
       responses:
         '200':
@@ -226,7 +237,14 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Event'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
+      operationId: createEvent
       summary: Create a new event
       requestBody:
         required: true
@@ -256,6 +274,7 @@ paths:
       schema: 
         type: integer
     get:
+      operationId: getEventById
       summary: Get event detail by ID
       responses:
         '200':
@@ -271,6 +290,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     put:
+      operationId: updateEventById
       summary: Update an event by id
       requestBody:
         required: true
@@ -298,6 +318,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
+      operationId: deleteEventById
       summary: Delete an event by id
       responses:
         '200':
@@ -317,6 +338,7 @@ paths:
       schema: 
         type: integer
     get:
+      operationId: getTickets
       summary: Get all tickets for a specific event
       responses:
         '200':
@@ -334,6 +356,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
+      operationId: createTicket
       summary: Create a new ticket for an event
       requestBody:
         required: true
@@ -360,5 +383,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'        
-  
-  
+  /order:
+    post: 
+      operationId: createOrder
+      summary: Create an order
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: Unique key to prevent double booking
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse' 
+    get:
+      operationId: getOrderHistory
+      summary: Get user order history
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /order/{id}/confirm:
+    parameters:
+    - name: id
+      in: path
+      required: true 
+      schema: 
+        type: integer
+    post:
+      operationId: confirmPayment
+      summary: Confirm order payment
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'      

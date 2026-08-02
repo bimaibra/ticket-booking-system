@@ -1,0 +1,38 @@
+{
+  "name": "ticket-booking-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx src/server.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bimaibra/ticket-booking-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/bimaibra/ticket-booking-system/issues"
+  },
+  "homepage": "https://github.com/bimaibra/ticket-booking-system#readme",
+  "dependencies": {
+    "@prisma/client": "^7.9.1",
+    "express": "^5.2.1",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.2",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@types/yamljs": "^0.2.34",
+    "prisma": "^7.9.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.4",
+    "typescript": "^7.0.2"
+  }
+}

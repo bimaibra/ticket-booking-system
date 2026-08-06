@@ -6,15 +6,25 @@ datasource db {
   provider = "postgresql"
 }
 
+
 model User {
-  id         Int      @id @default(autoincrement())
-  username   String   @unique
-  name       String
-  email      String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  name          String
+  email         String?
+  password_hash String
+  refresh_token String?
+  role          Role     @default(USER)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   orders Order[]
+  holds  Hold[]
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 model Event {
@@ -39,6 +49,30 @@ model Ticket {
   price           Float
 
   orderDetails OrderDetail[]
+  holds        Hold[]
+
+  @@index([event_id])
+}
+
+model Hold {
+  id         Int        @id @default(autoincrement())
+  user_id    Int
+  user       User       @relation(fields: [user_id], references: [id])
+  ticket_id  Int
+  ticket     Ticket     @relation(fields: [ticket_id], references: [id])
+  quantity   Int
+  expires_at DateTime
+  status     HoldStatus @default(ACTIVE)
+  created_at DateTime   @default(now())
+
+  @@index([ticket_id, status, expires_at])
+}
+
+enum HoldStatus {
+  ACTIVE
+  CONSUMED
+  EXPIRED
+  CANCELLED
 }
 
 model Order {
@@ -46,12 +80,19 @@ model Order {
   user_id         Int
   user            User          @relation(fields: [user_id], references: [id])
   total_amount    Float
-  status          String        @default("PENDING")
+  status          OrderStatus   @default(PENDING)
   created_at      DateTime      @default(now())
   expired_at      DateTime
   idempotency_key String?       @unique
 
   details OrderDetail[]
+}
+
+enum OrderStatus {
+  PENDING
+  SUCCESS
+  EXPIRED
+  CANCELLED
 }
 
 model OrderDetail {

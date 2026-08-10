@@ -1,25 +1,28 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-
 model User {
   id            Int      @id @default(autoincrement())
   username      String   @unique
   name          String
-  email         String?
+  email         String   @unique
   password_hash String
   refresh_token String?
   role          Role     @default(USER)
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  orders Order[]
-  holds  Hold[]
+  orders           Order[]
+  holds            Hold[]
+  idempotencyKeys  IdempotencyRecord[]
+
+  @@index([email])
 }
 
 enum Role {
@@ -37,16 +40,21 @@ model Event {
   updated_at  DateTime @updatedAt
 
   tickets Ticket[]
+
+  @@index([event_date])
 }
 
 model Ticket {
-  id              Int      @id @default(autoincrement())
-  event_id        Int
-  event           Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
-  name            String
-  available_quota Int
-  total_quota     Int
-  price           Float
+  id          Int      @id @default(autoincrement())
+  event_id    Int
+  event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  name        String
+  // Invariant: available_quota = total_quota - SUM(active holds.quantity) - SUM(success order_details.quantity)
+  // Derived on demand inside an explicit row-locking transaction. No materialized counter.
+  total_quota Int
+  price       Decimal  @db.Decimal(19, 4)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
 
   orderDetails OrderDetail[]
   holds        Hold[]
@@ -60,12 +68,18 @@ model Hold {
   user       User       @relation(fields: [user_id], references: [id])
   ticket_id  Int
   ticket     Ticket     @relation(fields: [ticket_id], references: [id])
+  // Hold-to-order linkage (consumed holds carry their order reference)
+  order_id   Int?
+  order      Order?     @relation(fields: [order_id], references: [id])
   quantity   Int
   expires_at DateTime
   status     HoldStatus @default(ACTIVE)
   created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
 
   @@index([ticket_id, status, expires_at])
+  @@index([user_id, status])
+  @@index([expires_at])
 }
 
 enum HoldStatus {
@@ -79,13 +93,19 @@ model Order {
   id              Int           @id @default(autoincrement())
   user_id         Int
   user            User          @relation(fields: [user_id], references: [id])
-  total_amount    Float
+  total_amount    Decimal       @db.Decimal(19, 4)
   status          OrderStatus   @default(PENDING)
   created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
   expired_at      DateTime
+  // Backward-compatible singular alias; canonical uniqueness is enforced by IdempotencyRecord.
   idempotency_key String?       @unique
 
   details OrderDetail[]
+  holds   Hold[]
+
+  @@index([user_id, created_at])
+  @@index([status])
 }
 
 enum OrderStatus {
@@ -96,12 +116,34 @@ enum OrderStatus {
 }
 
 model OrderDetail {
-  id        Int    @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   order_id  Int
-  order     Order  @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  order     Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
   ticket_id Int
-  ticket    Ticket @relation(fields: [ticket_id], references: [id])
-  price     Float
+  ticket    Ticket  @relation(fields: [ticket_id], references: [id])
+  price     Decimal @db.Decimal(19, 4)
   quantity  Int
-  subtotal  Float
+  subtotal  Decimal @db.Decimal(19, 4)
+}
+
+// Durable idempotency record: payload hash + cached response + lifecycle state + 24h expiry.
+// `state` is either PENDING (request in flight) or COMPLETED (response cached).
+// `scope` identifies the endpoint (e.g. "POST /orders") so the same key can be reused across routes.
+model IdempotencyRecord {
+  id            Int      @id @default(autoincrement())
+  key           String
+  scope         String
+  payload_hash  String
+  response_body String?
+  status_code   Int?
+  state         String   @default("PENDING")
+  user_id       Int?
+  user          User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  expires_at    DateTime
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([key, scope])
+  @@index([expires_at])
+  @@index([user_id, scope])
 }

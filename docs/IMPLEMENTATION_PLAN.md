@@ -96,19 +96,19 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
 **Objective:** Fix schema, dependencies, Prisma client, and environment configuration.
 
 - [x] Install the initial runtime/test dependencies (`bcrypt`, `jsonwebtoken`, `node-cron`, `dotenv`, `zod`, `vitest`, `supertest`, `@types/*`).
-- [ ] Add remaining dependencies selected for Testcontainers, rate limiting, CORS, structured logging/metrics, coverage, load testing, and Spectral.
+- [x] Add remaining dependencies selected for Testcontainers, rate limiting, CORS, structured logging/metrics, coverage, load testing, and Spectral.
 - [x] Extend `prisma/schema.prisma` with:
   - `password_hash`, `refresh_token`, `role` on `User`.
   - `Role`, `HoldStatus`, `OrderStatus` enums.
   - `Hold` model with relations and composite index.
-- [ ] Complete `prisma/schema.prisma` with:
+- [x] Complete `prisma/schema.prisma` with:
   - Prisma 7-compatible datasource configuration using `prisma.config.ts`.
   - Durable idempotency and hold-to-order linkage models.
   - Decimal or minor-unit monetary representation.
-- [ ] Create and apply a migration; add `prisma/seed.ts` and document local PostgreSQL setup.
-- [ ] Create `.env.example` with `DATABASE_URL`, JWT secrets, token lifetimes, hold/idempotency TTLs, `PORT`, CORS origins, and rate-limit settings.
-- [ ] Create `src/lib/prisma.ts` singleton and `src/utils/errors.ts` for structured error handling.
-- [ ] Add startup environment validation and verify that no secrets are logged or committed.
+- [x] Create `prisma.config.ts` and `.env.example`; add `src/lib/prisma.ts`, `src/utils/errors.ts`, and `src/config/env.ts` for startup validation.
+- [x] Add `prisma/seed.ts` with admin/event/ticket seed data using hashed password helper.
+- [x] Apply Prisma migration against PostgreSQL and verify `npx prisma validate`, `npx prisma migrate dev`, `npx prisma db seed`, and `npm run db:generate` succeed locally. Use `postgresql://USER:***@HOST:PORT/DB_NAME?schema=public` in `.env`.
+- [x] Add `docs/setup-local-postgres.md` with local PostgreSQL setup and migration steps.
 
 ### M2: Authentication
 **Objective:** Implement register, login, refresh, logout with bcrypt and JWT.

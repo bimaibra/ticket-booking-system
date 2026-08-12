@@ -30,8 +30,42 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** User Login Request */
+        /** User Login */
         post: operations["loginUser"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh access token */
+        post: operations["refreshToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout user and invalidate refresh token */
+        post: operations["logoutUser"];
         delete?: never;
         options?: never;
         head?: never;
@@ -48,7 +82,7 @@ export interface paths {
         /** Get all events */
         get: operations["getEvents"];
         put?: never;
-        /** Create a new event */
+        /** Create a new event (Admin only) */
         post: operations["createEvent"];
         delete?: never;
         options?: never;
@@ -67,11 +101,31 @@ export interface paths {
         };
         /** Get event detail by ID */
         get: operations["getEventById"];
-        /** Update an event by id */
+        /** Update an event by ID (Admin only) */
         put: operations["updateEventById"];
         post?: never;
-        /** Delete an event by id */
+        /** Delete an event by ID (Admin only) */
         delete: operations["deleteEventById"];
+        options?: never;
+        head?: never;
+        /** Partially update an event by ID (Admin only) */
+        patch: operations["patchEventById"];
+        trace?: never;
+    };
+    "/events/{id}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        /** Get computed availability for event tickets */
+        get: operations["getEventAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -89,7 +143,7 @@ export interface paths {
         /** Get all tickets for a specific event */
         get: operations["getTickets"];
         put?: never;
-        /** Create a new ticket for an event */
+        /** Create a new ticket for an event (Admin only) */
         post: operations["createTicket"];
         delete?: never;
         options?: never;
@@ -97,7 +151,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/order": {
+    "/events/{eventId}/tickets/{ticketId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+                ticketId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Update ticket details (Admin only) */
+        put: operations["updateTicket"];
+        post?: never;
+        /** Delete ticket (Admin only) */
+        delete: operations["deleteTicket"];
+        options?: never;
+        head?: never;
+        /** Partially update ticket details (Admin only) */
+        patch: operations["patchTicket"];
+        trace?: never;
+    };
+    "/holds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Place temporary hold on tickets */
+        post: operations["createHold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/holds/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel an active hold owned by user */
+        delete: operations["cancelHold"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders": {
         parameters: {
             query?: never;
             header?: never;
@@ -107,7 +219,7 @@ export interface paths {
         /** Get user order history */
         get: operations["getOrderHistory"];
         put?: never;
-        /** Create an order */
+        /** Create an order from an active hold */
         post: operations["createOrder"];
         delete?: never;
         options?: never;
@@ -115,7 +227,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/order/{id}/confirm": {
+    "/orders/{id}/confirm": {
         parameters: {
             query?: never;
             header?: never;
@@ -134,36 +246,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all orders across all users (Admin only) */
+        get: operations["adminGetAllOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all system users (Admin only) */
+        get: operations["adminGetAllUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update user role (Admin only) */
+        patch: operations["adminUpdateUserRole"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        Role: "USER" | "ADMIN";
         User: {
             id?: number;
             username?: string;
             name?: string;
             email?: string;
+            role?: components["schemas"]["Role"];
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
         };
         RegisterRequest: {
-            username?: string;
-            name?: string;
-            email?: string;
-            password?: string;
+            username: string;
+            name: string;
+            email: string;
+            password: string;
         };
         LoginRequest: {
-            username?: string;
-            password?: string;
+            username: string;
+            password: string;
+        };
+        RefreshRequest: {
+            refresh_token: string;
         };
         AuthResponse: {
-            token?: string;
+            access_token?: string;
+            refresh_token?: string;
             user?: components["schemas"]["User"];
+        };
+        TokenResponse: {
+            access_token?: string;
+            refresh_token?: string;
         };
         ErrorResponse: {
             message?: string;
+            code?: string;
         };
         Event: {
             id?: number;
@@ -178,6 +355,13 @@ export interface components {
             updated_at?: string;
         };
         CreateEventRequest: {
+            name: string;
+            /** Format: date-time */
+            event_date: string;
+            description?: string;
+            address?: string;
+        };
+        UpdateEventRequest: {
             name?: string;
             /** Format: date-time */
             event_date?: string;
@@ -190,39 +374,85 @@ export interface components {
             name?: string;
             available_quota?: number;
             total_quota?: number;
-            price?: number;
-        };
-        CreateTicketRequest: {
-            name?: string;
-            total_quota?: number;
-            price?: number;
-        };
-        OrderDetail: {
-            id?: number;
-            ticket_id?: number;
-            price?: number;
-            quantity?: number;
-            subtotal?: number;
-        };
-        Order: {
-            id?: number;
-            user_id?: number;
-            total_amount?: number;
-            /** @enum {string} */
-            status?: "PENDING" | "SUCCESS" | "EXPIRED" | "CANCELLED";
+            price?: string;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
+            updated_at?: string;
+        };
+        CreateTicketRequest: {
+            name: string;
+            total_quota: number;
+            price: string;
+        };
+        UpdateTicketRequest: {
+            name?: string;
+            total_quota?: number;
+            price?: string;
+        };
+        TicketAvailability: {
+            ticket_id?: number;
+            name?: string;
+            price?: string;
+            total_quota?: number;
+            available_quota?: number;
+            /** Format: date-time */
+            last_updated?: string;
+        };
+        AvailabilityResponse: {
+            event_id?: number;
+            tickets?: components["schemas"]["TicketAvailability"][];
+        };
+        /** @enum {string} */
+        HoldStatus: "ACTIVE" | "CONSUMED" | "EXPIRED" | "CANCELLED";
+        Hold: {
+            id?: number;
+            user_id?: number;
+            ticket_id?: number;
+            order_id?: number;
+            quantity?: number;
+            /** Format: date-time */
+            expires_at?: string;
+            status?: components["schemas"]["HoldStatus"];
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CreateHoldRequest: {
+            ticket_id: number;
+            /** @default 1 */
+            quantity: number;
+        };
+        OrderDetail: {
+            id?: number;
+            order_id?: number;
+            ticket_id?: number;
+            price?: string;
+            quantity?: number;
+            subtotal?: string;
+        };
+        /** @enum {string} */
+        OrderStatus: "PENDING" | "SUCCESS" | "EXPIRED" | "CANCELLED";
+        Order: {
+            id?: number;
+            user_id?: number;
+            total_amount?: string;
+            status?: components["schemas"]["OrderStatus"];
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            /** Format: date-time */
             expired_at?: string;
-            /** Format: uuid */
             idempotency_key?: string;
             details?: components["schemas"]["OrderDetail"][];
         };
         CreateOrderRequest: {
-            items?: {
-                ticket_id?: number;
-                quantity?: number;
-            }[];
+            hold_id: number;
+        };
+        AdminUserUpdateRequest: {
+            role: components["schemas"]["Role"];
         };
     };
     responses: never;
@@ -257,6 +487,15 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -299,6 +538,66 @@ export interface operations {
             };
         };
     };
+    refreshToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    logoutUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getEvents: {
         parameters: {
             query?: never;
@@ -315,15 +614,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Event"][];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -352,6 +642,15 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -403,7 +702,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreateEventRequest"];
+                "application/json": components["schemas"]["UpdateEventRequest"];
             };
         };
         responses: {
@@ -418,6 +717,15 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -448,11 +756,104 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Event deleted successfully */
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchEventById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Event"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEventAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityResponse"];
+                };
             };
             /** @description Not Found */
             404: {
@@ -522,6 +923,271 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+                ticketId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticket"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+                ticketId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ticket deleted successfully */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cannot delete ticket with active orders/holds */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: number;
+                ticketId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticket"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createHold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateHoldRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Hold"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Insufficient Quota Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelHold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Hold"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -621,6 +1287,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Idempotency Key Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     confirmPayment: {
@@ -645,6 +1320,153 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    adminGetAllOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Order"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    adminGetAllUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    adminUpdateUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminUserUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

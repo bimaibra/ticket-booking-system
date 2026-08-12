@@ -200,8 +200,8 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
 ### M7: OpenAPI Sync
 **Objective:** Update `openapi.yaml` to match PRD requirements.
 
-- [ ] Add missing schemas: `Hold`, `HoldRequest`, `AvailabilityResponse`, `RefreshRequest`, `TokenResponse`, `AdminUserUpdateRequest`.
-- [ ] Add missing endpoints:
+- [x] Add missing schemas: `Hold`, `HoldRequest`, `AvailabilityResponse`, `RefreshRequest`, `TokenResponse`, `AdminUserUpdateRequest`.
+- [x] Add missing endpoints:
   - `POST /auth/refresh`
   - `POST /auth/logout`
   - `GET /events/{id}/availability`
@@ -211,10 +211,10 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
   - `GET /admin/orders`
   - `GET /admin/users`
   - `PATCH /admin/users/{id}/role`
-- [ ] Update `AuthResponse` to include `access_token` and `refresh_token`.
-- [ ] Resolve and document canonical `/orders` paths, order state transitions, and any backward-compatible singular `/order` aliases.
-- [ ] Regenerate `types/api.ts` from updated `openapi.yaml`.
-- [ ] Validate the specification with Spectral and verify Swagger UI renders every operation/schema.
+- [x] Update `AuthResponse` to include `access_token` and `refresh_token`.
+- [x] Resolve and document canonical `/orders` paths, order state transitions, and any backward-compatible singular `/order` aliases.
+- [x] Regenerate `types/api.ts` from updated `openapi.yaml`.
+- [x] Validate the specification with Spectral and verify Swagger UI renders every operation/schema.
 
 ### M8: Testing, Performance & Release Readiness
 **Objective:** Prove functional correctness, concurrency safety, security, and PRD operational targets.

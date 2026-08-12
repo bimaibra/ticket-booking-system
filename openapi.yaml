@@ -1,17 +1,34 @@
-openapi: 3.1.0
-info: 
+openapi: "3.1.0"
+info:
   title: ticket booking system
   version: 1.0.0
   description: documentation API using yaml
+  contact:
+    name: Support Team
+    email: support@example.com
+tags:
+  - name: Authentication
+    description: Authentication endpoints
+  - name: Events & Tickets
+    description: Event and ticket management
+  - name: Holds
+    description: Temporary ticket holds
+  - name: Orders
+    description: Order creation and history
+  - name: Admin
+    description: Administrative endpoints
 security:
   - bearerAuth: []
-
-servers: 
+servers:
   - url: http://localhost:3001
     description: local development
-
 components:
   schemas:
+    Role:
+      type: string
+      enum:
+        - USER
+        - ADMIN
     User:
       type: object
       properties:
@@ -23,6 +40,8 @@ components:
           type: string
         email:
           type: string
+        role:
+          $ref: '#/components/schemas/Role'
         created_at:
           type: string
           format: date-time
@@ -31,8 +50,13 @@ components:
           format: date-time
     RegisterRequest:
       type: object
+      required:
+        - username
+        - name
+        - email
+        - password
       properties:
-        username: 
+        username:
           type: string
         name:
           type: string
@@ -42,30 +66,51 @@ components:
           type: string
     LoginRequest:
       type: object
+      required:
+        - username
+        - password
       properties:
         username:
           type: string
         password:
           type: string
+    RefreshRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
     AuthResponse:
       type: object
       properties:
-        token:
+        access_token:
+          type: string
+        refresh_token:
           type: string
         user:
           $ref: '#/components/schemas/User'
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
     ErrorResponse:
       type: object
       properties:
         message:
           type: string
+        code:
+          type: string
     Event:
       type: object
       properties:
         id:
-          type: number
+          type: integer
         name:
-         type: string
+          type: string
         event_date:
           type: string
           format: date-time
@@ -81,6 +126,21 @@ components:
           format: date-time
     CreateEventRequest:
       type: object
+      required:
+        - name
+        - event_date
+      properties:
+        name:
+          type: string
+        event_date:
+          type: string
+          format: date-time
+        description:
+          type: string
+        address:
+          type: string
+    UpdateEventRequest:
+      type: object
       properties:
         name:
           type: string
@@ -95,9 +155,9 @@ components:
       type: object
       properties:
         id:
-          type: number
+          type: integer
         event_id:
-          type: number
+          type: integer
         name:
           type: string
         available_quota:
@@ -105,8 +165,27 @@ components:
         total_quota:
           type: integer
         price:
-          type: number
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     CreateTicketRequest:
+      type: object
+      required:
+        - name
+        - total_quota
+        - price
+      properties:
+        name:
+          type: string
+        total_quota:
+          type: integer
+        price:
+          type: string
+    UpdateTicketRequest:
       type: object
       properties:
         name:
@@ -114,37 +193,110 @@ components:
         total_quota:
           type: integer
         price:
-          type: number
+          type: string
+    TicketAvailability:
+      type: object
+      properties:
+        ticket_id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: string
+        total_quota:
+          type: integer
+        available_quota:
+          type: integer
+        last_updated:
+          type: string
+          format: date-time
+    AvailabilityResponse:
+      type: object
+      properties:
+        event_id:
+          type: integer
+        tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketAvailability'
+    HoldStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - CONSUMED
+        - EXPIRED
+        - CANCELLED
+    Hold:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        ticket_id:
+          type: integer
+        order_id:
+          type: integer
+        quantity:
+          type: integer
+        expires_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/HoldStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateHoldRequest:
+      type: object
+      required:
+        - ticket_id
+      properties:
+        ticket_id:
+          type: integer
+        quantity:
+          type: integer
+          default: 1
     OrderDetail:
       type: object
       properties:
         id:
-          type: number
+          type: integer
+        order_id:
+          type: integer
         ticket_id:
-          type: number
+          type: integer
         price:
-          type: number
+          type: string
         quantity:
           type: integer
         subtotal:
-          type: number
+          type: string
+    OrderStatus:
+      type: string
+      enum:
+        - PENDING
+        - SUCCESS
+        - EXPIRED
+        - CANCELLED
     Order:
       type: object
       properties:
         id:
-          type: number
+          type: integer
         user_id:
-          type: number
+          type: integer
         total_amount:
-          type: number
-        status:
           type: string
-          enum:
-          - PENDING
-          - SUCCESS
-          - EXPIRED
-          - CANCELLED 
+        status:
+          $ref: '#/components/schemas/OrderStatus'
         created_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time
         expired_at:
@@ -152,30 +304,30 @@ components:
           format: date-time
         idempotency_key:
           type: string
-          format: uuid 
         details:
           type: array
           items:
             $ref: '#/components/schemas/OrderDetail'
     CreateOrderRequest:
       type: object
+      required:
+        - hold_id
       properties:
-        items:                 
-          type: array
-          items:               
-            type: object
-            properties:
-              ticket_id:
-                type: integer
-              quantity:
-                type: integer
+        hold_id:
+          type: integer
+    AdminUserUpdateRequest:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          $ref: '#/components/schemas/Role'
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
-paths: 
+paths:
   /auth/register:
     post:
       operationId: registerUser
@@ -187,10 +339,10 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
-      responses: 
+      responses:
         '201':
           description: Created
-          content: 
+          content:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
@@ -200,10 +352,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Authentication
+      description: Register a new user
   /auth/login:
     post:
       operationId: loginUser
-      summary: User Login Request
+      summary: User Login
       security: []
       requestBody:
         required: true
@@ -214,7 +375,7 @@ paths:
       responses:
         '200':
           description: Success
-          content: 
+          content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
@@ -224,10 +385,57 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Authentication
+      description: User Login
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Authentication
+      description: Refresh access token
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      summary: Logout user and invalidate refresh token
+      responses:
+        '204':
+          description: No Content
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Authentication
+      description: Logout user and invalidate refresh token
   /events:
     get:
       operationId: getEvents
       summary: Get all events
+      security: []
       responses:
         '200':
           description: Success
@@ -237,15 +445,12 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Event'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Get all events
     post:
       operationId: createEvent
-      summary: Create a new event
+      summary: Create a new event (Admin only)
       requestBody:
         required: true
         content:
@@ -265,17 +470,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Create a new event (Admin only)
   /events/{id}:
     parameters:
-    - name: id
-      in: path
-      required: true 
-      schema: 
-        type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
     get:
       operationId: getEventById
       summary: Get event detail by ID
+      security: []
       responses:
         '200':
           description: Success
@@ -289,21 +503,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Get event detail by ID
     put:
       operationId: updateEventById
-      summary: Update an event by id
+      summary: Update an event by ID (Admin only)
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateEventRequest'
+              $ref: '#/components/schemas/UpdateEventRequest'
       responses:
         '200':
           description: Success
           content:
             application/json:
-              schema: 
+              schema:
                 $ref: '#/components/schemas/Event'
         '400':
           description: Bad Request
@@ -311,35 +528,117 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not Found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      operationId: deleteEventById
-      summary: Delete an event by id
+      tags:
+        - Events & Tickets
+      description: Update an event by ID (Admin only)
+    patch:
+      operationId: patchEventById
+      summary: Partially update an event by ID (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEventRequest'
       responses:
         '200':
-          description: Event deleted successfully
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not Found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
+      tags:
+        - Events & Tickets
+      description: Partially update an event by ID (Admin only)
+    delete:
+      operationId: deleteEventById
+      summary: Delete an event by ID (Admin only)
+      responses:
+        '204':
+          description: Event deleted successfully
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Delete an event by ID (Admin only)
+  /events/{id}/availability:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      operationId: getEventAvailability
+      summary: Get computed availability for event tickets
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Get computed availability for event tickets
   /events/{id}/tickets:
     parameters:
-    - name: id
-      in: path
-      required: true 
-      schema: 
-        type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
     get:
       operationId: getTickets
       summary: Get all tickets for a specific event
+      security: []
       responses:
         '200':
           description: Success
@@ -355,9 +654,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Get all tickets for a specific event
     post:
       operationId: createTicket
-      summary: Create a new ticket for an event
+      summary: Create a new ticket for an event (Admin only)
       requestBody:
         required: true
         content:
@@ -377,24 +679,221 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not Found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'        
-  /order:
-    post: 
-      operationId: createOrder
-      summary: Create an order
-      parameters:
-      - name: Idempotency-Key
-        in: header
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Create a new ticket for an event (Admin only)
+  /events/{eventId}/tickets/{ticketId}:
+    parameters:
+      - name: eventId
+        in: path
         required: true
-        description: Unique key to prevent double booking
         schema:
-          type: string
-          format: uuid
+          type: integer
+      - name: ticketId
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      operationId: updateTicket
+      summary: Update ticket details (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Update ticket details (Admin only)
+    patch:
+      operationId: patchTicket
+      summary: Partially update ticket details (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTicketRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Partially update ticket details (Admin only)
+    delete:
+      operationId: deleteTicket
+      summary: Delete ticket (Admin only)
+      responses:
+        '204':
+          description: Ticket deleted successfully
+        '400':
+          description: Cannot delete ticket with active orders/holds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Events & Tickets
+      description: Delete ticket (Admin only)
+  /holds:
+    post:
+      operationId: createHold
+      summary: Place temporary hold on tickets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHoldRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Insufficient Quota Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Holds
+      description: Place temporary hold on tickets
+  /holds/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    delete:
+      operationId: cancelHold
+      summary: Cancel an active hold owned by user
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Hold'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Holds
+      description: Cancel an active hold owned by user
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Create an order from an active hold
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: Unique key to prevent double booking
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -425,7 +924,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse' 
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Idempotency Key Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Orders
+      description: Create an order from an active hold
     get:
       operationId: getOrderHistory
       summary: Get user order history
@@ -444,13 +952,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /order/{id}/confirm:
+      tags:
+        - Orders
+      description: Get user order history
+  /orders/{id}/confirm:
     parameters:
-    - name: id
-      in: path
-      required: true 
-      schema: 
-        type: integer
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
     post:
       operationId: confirmPayment
       summary: Confirm order payment
@@ -467,9 +978,124 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not Found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'      
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Orders
+      description: Confirm order payment
+  /admin/orders:
+    get:
+      operationId: adminGetAllOrders
+      summary: List all orders across all users (Admin only)
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Admin
+      description: List all orders across all users (Admin only)
+  /admin/users:
+    get:
+      operationId: adminGetAllUsers
+      summary: List all system users (Admin only)
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Admin
+      description: List all system users (Admin only)
+  /admin/users/{id}/role:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: adminUpdateUserRole
+      summary: Update user role (Admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUserUpdateRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Admin
+      description: Update user role (Admin only)

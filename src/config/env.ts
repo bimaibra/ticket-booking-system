@@ -4,7 +4,9 @@ import { z } from 'zod';
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_ACCESS_SECRET_FALLBACKS: z.string().default(''),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
+  JWT_REFRESH_SECRET_FALLBACKS: z.string().default(''),
   JWT_ACCESS_EXPIRY: z.string().default('900'),
   JWT_REFRESH_EXPIRY: z.string().default('604800'),
   HOLD_TTL_SECONDS: z.string().default('600'),

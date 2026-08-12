@@ -1,7 +1,7 @@
 # Ticket Booking System — Implementation Plan & Gap Analysis
 
-**Version:** 1.1.0  
-**Date:** 2026-08-06  
+**Version:** 1.1.1  
+**Date:** 2026-08-11  
 **Status:** In Progress  
 
 ---
@@ -113,19 +113,23 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
 ### M2: Authentication
 **Objective:** Implement register, login, refresh, logout with bcrypt and JWT.
 
-- [ ] Create `src/lib/hash.ts` (bcrypt wrapper) using cost factor >= 12.
-- [ ] Create `src/lib/jwt.ts` (sign/verify for access and refresh tokens):
-  - Issue access tokens for 15 minutes and refresh tokens for 7 days.
-  - Define signing-key rotation and reject tokens with unexpected algorithm/issuer/audience.
-- [ ] Create `src/middleware/auth.ts`:
-  - `authenticate` middleware: verify Bearer token, attach `req.user`.
-  - `requireAdmin` middleware: verify `req.user.role === ADMIN`.
-- [ ] Create `src/routes/auth.ts`:
-  - `POST /auth/register` — validate input, hash password, create user.
-  - Require `username`, `name`, `email`, and `password`; make the database/API email contract consistent.
-  - `POST /auth/login` — verify password, issue access + refresh tokens, store only a secure hash/session representation of the refresh token.
-  - `POST /auth/refresh` — verify refresh token, rotate token pair.
-  - `POST /auth/logout` — invalidate refresh token (clear DB field).
+- [x] Create `src/lib/hash.ts` (bcrypt wrapper) using cost factor >= 12.
+- [x] Create `src/lib/jwt.ts` (sign/verify for access and refresh tokens):
+  - [x] Issue access tokens for 15 minutes and refresh tokens for 7 days.
+  - [x] Reject tokens with unexpected algorithm/issuer/audience.
+  - [x] Define and document signing-key rotation procedure.
+- [x] Create `src/middleware/auth.ts`:
+  - [x] `authenticate` middleware: verify Bearer token, attach `req.user`.
+  - [x] `requireAdmin` middleware: verify `req.user.role === ADMIN`.
+- [x] Create `src/routes/auth.ts`:
+  - [x] `POST /auth/register` — validate input, hash password, create user.
+  - [x] Require `username`, `name`, `email`, and `password`; make the database/API email contract consistent.
+  - [x] `POST /auth/login` — verify password, issue access + refresh tokens, store only a secure hash/session representation of the refresh token.
+  - [x] `POST /auth/refresh` — verify refresh token, rotate token pair.
+  - [x] `POST /auth/logout` — invalidate refresh token (clear DB field).
+- [x] Wire auth routes into `src/server.ts` and remove in-memory auth endpoints.
+- [ ] Add route-level auth rate limiting and production-only strict CORS allowlist enforcement in M6.
+- [ ] Add automated auth integration tests in M8 before marking authentication acceptance criteria complete.
 
 ### M3: Events & Tickets
 **Objective:** Full CRUD using Prisma, protected by auth and admin guards.
@@ -227,7 +231,7 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
 
 ## 3. Acceptance Criteria Summary
 
-- [ ] User can register, login, refresh, and logout successfully.
+- [ ] User can register, login, refresh, and logout successfully. Implementation exists; mark complete after integration tests pass.
 - [ ] Admin can CRUD events and tickets; non-admin receives 403 Forbidden.
 - [ ] Availability reflects active holds and confirmed bookings accurately.
 - [ ] Hold creation fails when quota insufficient (409 Conflict); succeeds otherwise.

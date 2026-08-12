@@ -134,18 +134,18 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
 ### M3: Events & Tickets
 **Objective:** Full CRUD using Prisma, protected by auth and admin guards.
 
-- [ ] Create `src/routes/events.ts`:
+- [x] Create `src/routes/events.ts`:
   - `GET /events` — public, list all events.
   - `GET /events/:id` — public, get event detail.
   - `POST /events` — admin only, create event.
   - `PUT /events/:id` — admin only, update event.
   - `DELETE /events/:id` — admin only, delete event (cascades to tickets via schema).
-- [ ] Create `src/routes/tickets.ts`:
+- [x] Create `src/routes/tickets.ts`:
   - `GET /events/:id/tickets` — public, list tickets for event.
   - `POST /events/:id/tickets` — admin only, create ticket type with quota.
   - `PUT/PATCH /events/:id/tickets/:ticketId` — admin only, update ticket metadata/quota under defined inventory rules.
   - `DELETE /events/:id/tickets/:ticketId` — admin only, delete only when permitted by existing orders/holds.
-- [ ] Create admin routes for `GET /admin/orders`, `GET /admin/users`, and `PATCH /admin/users/:id/role`.
+- [x] Create admin routes for `GET /admin/orders`, `GET /admin/users`, and `PATCH /admin/users/:id/role`.
 
 ### M4: Holds & Availability
 **Objective:** Create/cancel holds, real-time availability with row locking.

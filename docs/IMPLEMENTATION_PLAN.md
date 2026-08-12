@@ -150,21 +150,21 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
 ### M4: Holds & Availability
 **Objective:** Create/cancel holds, real-time availability with row locking.
 
-- [ ] Create `src/services/availability.ts`:
+- [x] Create `src/services/availability.ts`:
   - Define and implement one invariant: derived availability from confirmed details and active holds, or an atomically maintained counter; do not apply both.
   - Return the same hold-aware result from `GET /events/:id/tickets` and `/events/:id/availability`, including `last_updated`.
-- [ ] Create `src/routes/holds.ts`:
+- [x] Create `src/routes/holds.ts`:
   - `POST /holds` — authenticated, start transaction, lock ticket row, check availability, insert hold with TTL (default 10 min), commit.
   - `DELETE /holds/:id` — authenticated, cancel own active hold.
   - Validate positive quantity, ticket ownership/existence, TTL configuration, and expired-hold behavior (`410 Gone` when applicable).
   - Preserve support for multiple holds by the same user and enforce any configured per-user/event hold limit.
-- [ ] Create `src/routes/events.ts` addition:
+- [x] Create `src/routes/events.ts` addition:
   - `GET /events/:id/availability` — public, returns computed availability per ticket with `last_updated` timestamp.
 
 ### M5: Booking & Idempotency
 **Objective:** Transactional order creation from holds, idempotency enforcement.
 
-- [ ] Create `src/routes/orders.ts`:
+- [x] Create `src/routes/orders.ts`:
   - Canonicalize the existing singular `/order` contract versus the PRD's `/orders` path before implementation; document compatibility aliases if needed.
   - `POST /orders` — authenticated, requires a UUID v4 `Idempotency-Key` header.
     - Use an idempotency record with request hash, response/status, state, user/scope, and `expires_at` (24 hours).
@@ -177,25 +177,25 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
     - Create `Order` + `OrderDetail` records.
     - Apply the selected quota invariant exactly once and link consumed holds to the order.
     - Commit transaction.
-  - `GET /order` — authenticated, view own order history.
-  - `POST /order/:id/confirm` — authenticated, mark order status as SUCCESS.
-- [ ] Define order states and whether payment confirmation is retained; the PRD's out-of-scope payment assumption must not conflict with immediate `SUCCESS` booking.
+  - `GET /orders` — authenticated, view own order history.
+  - `POST /orders/:id/confirm` — authenticated, mark order status as SUCCESS.
+- [x] Define order states and whether payment confirmation is retained; the PRD's out-of-scope payment assumption must not conflict with immediate `SUCCESS` booking.
 
 ### M6: Scheduler & Hardening
 **Objective:** Expired hold cleanup cron job, global error handling.
 
-- [ ] Create `src/services/holdExpiry.ts`:
+- [x] Create `src/services/holdExpiry.ts`:
   - Function to find `expires_at < NOW() AND status = ACTIVE`, update to `EXPIRED` in a batch.
-- [ ] Wire cron job into `src/server.ts`:
+- [x] Wire cron job into `src/server.ts`:
   - Run every 30 seconds using `node-cron`.
   - Log release count for monitoring.
-- [ ] Add global error handler in `src/server.ts`:
+- [x] Add global error handler in `src/server.ts`:
   - Catch `AppError` instances and send structured JSON responses.
   - Catch unexpected errors and send 500.
-- [ ] Add rate limiting on authentication endpoints, strict CORS configuration, secure refresh-token handling, token lifetime/rotation policy, and production HTTPS requirements.
-- [ ] Add structured logging, request IDs/tracing, metrics for holds/orders/expiry, health/readiness endpoints, graceful shutdown, and lazy expiry cleanup on availability/hold operations.
-- [ ] Coordinate the in-process scheduler across multiple API instances using a database/advisory lock or document a single-worker deployment constraint.
-- [ ] Add idempotency-record cleanup to the scheduler without interfering with active booking transactions.
+- [x] Add rate limiting on authentication endpoints, strict CORS configuration, secure refresh-token handling, token lifetime/rotation policy, and production HTTPS requirements.
+- [x] Add structured logging, request IDs/tracing, metrics for holds/orders/expiry, health/readiness endpoints, graceful shutdown, and lazy expiry cleanup on availability/hold operations.
+- [x] Coordinate the in-process scheduler across multiple API instances using a database/advisory lock or document a single-worker deployment constraint.
+- [x] Add idempotency-record cleanup to the scheduler without interfering with active booking transactions.
 
 ### M7: OpenAPI Sync
 **Objective:** Update `openapi.yaml` to match PRD requirements.

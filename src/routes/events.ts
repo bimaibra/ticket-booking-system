@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import { prisma } from '../lib/prisma.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { getEventAvailability } from '../services/availability.js';
 
 const router = Router();
 
@@ -126,4 +127,23 @@ router.delete('/:id', authenticate, requireAdmin, async (req: Request, res: Resp
   await prisma.event.delete({ where: { id } });
   res.status(204).end();
 });
+
+router.get('/:id/availability', async (req: Request, res: Response) => {
+  const id = Number.parseInt(req.params.id as string, 10);
+  if (Number.isNaN(id)) {
+    throw new ValidationError('Invalid event ID');
+  }
+
+  const event = await prisma.event.findUnique({ where: { id } });
+  if (!event) {
+    throw new NotFoundError('Event');
+  }
+
+  const availability = await getEventAvailability(id);
+  res.json({
+    event_id: id,
+    tickets: availability,
+  });
+});
+
 export default router;

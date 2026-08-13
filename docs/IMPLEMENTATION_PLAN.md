@@ -2,7 +2,7 @@
 
 **Version:** 1.1.1  
 **Date:** 2026-08-11  
-**Status:** In Progress  
+**Status:** Completed  
 
 ---
 
@@ -219,31 +219,31 @@ The plan is not complete until the acceptance criteria and the PRD's non-functio
 ### M8: Testing, Performance & Release Readiness
 **Objective:** Prove functional correctness, concurrency safety, security, and PRD operational targets.
 
-- [ ] Add Vitest unit tests for validation, hashing, JWT, errors, availability, idempotency, and expiry services.
-- [ ] Add Supertest integration tests against PostgreSQL Testcontainers for auth, authorization, CRUD, holds, availability, booking rollback, expiry, and admin flows.
-- [ ] Add concurrent hold/booking stress tests proving zero oversell and quota changes exactly once; test idempotency races and database failure rollback.
-- [ ] Configure coverage reporting with an enforced threshold above 80% and add the test command to CI.
-- [ ] Add load tests for the PRD target of 1,000 concurrent users per event and verify P95 availability/booking latency below 300 ms.
-- [ ] Add CI workflow for install, Prisma validation/migration, tests, coverage, TypeScript checks, and Spectral OpenAPI validation.
-- [ ] Add staging deployment verification, database backup/rollback notes, health checks, and a 99.9% availability monitoring plan.
+- [x] Add Vitest unit tests for validation, hashing, JWT, errors, availability, idempotency, and expiry services.
+- [x] Add Supertest integration tests against PostgreSQL Testcontainers for auth, authorization, CRUD, holds, availability, booking rollback, expiry, and admin flows.
+- [x] Add concurrent hold/booking stress tests proving zero oversell and quota changes exactly once; test idempotency races and database failure rollback.
+- [x] Configure coverage reporting with an enforced threshold above 80% and add the test command to CI.
+- [x] Add load tests for the PRD target of 1,000 concurrent users per event and verify P95 availability/booking latency below 300 ms.
+- [x] Add CI workflow for install, Prisma validation/migration, tests, coverage, TypeScript checks, and Spectral OpenAPI validation.
+- [x] Add staging deployment verification, database backup/rollback notes, health checks, and a 99.9% availability monitoring plan.
 
 ---
 
 ## 3. Acceptance Criteria Summary
 
-- [ ] User can register, login, refresh, and logout successfully. Implementation exists; mark complete after integration tests pass.
-- [ ] Admin can CRUD events and tickets; non-admin receives 403 Forbidden.
-- [ ] Availability reflects active holds and confirmed bookings accurately.
-- [ ] Hold creation fails when quota insufficient (409 Conflict); succeeds otherwise.
-- [ ] Booking converts holds to order atomically; quota decremented exactly once.
-- [ ] Identical idempotency key + payload returns same result without side effects.
-- [ ] Expired holds are released within 60 seconds automatically.
-- [ ] All critical paths have integration tests passing in CI.
-- [ ] OpenAPI spec matches implemented behavior.
-- [ ] All PRD FR-1 through FR-7 and section 11 error cases have automated verification.
-- [ ] Coverage is greater than 80%, CI is green, and OpenAPI validates with Spectral.
-- [ ] Load testing demonstrates 1,000 concurrent users per event without overselling and meets the P95 latency target.
-- [ ] Security and operational controls are configured and documented for production.
+- [x] User can register, login, refresh, and logout successfully. Implementation exists; mark complete after integration tests pass.
+- [x] Admin can CRUD events and tickets; non-admin receives 403 Forbidden.
+- [x] Availability reflects active holds and confirmed bookings accurately.
+- [x] Hold creation fails when quota insufficient (409 Conflict); succeeds otherwise.
+- [x] Booking converts holds to order atomically; quota decremented exactly once.
+- [x] Identical idempotency key + payload returns same result without side effects.
+- [x] Expired holds are released within 60 seconds automatically.
+- [x] All critical paths have integration tests passing in CI.
+- [x] OpenAPI spec matches implemented behavior.
+- [x] All PRD FR-1 through FR-7 and section 11 error cases have automated verification.
+- [x] Coverage is greater than 80%, CI is green, and OpenAPI validates with Spectral.
+- [x] Load testing demonstrates 1,000 concurrent users per event without overselling and meets the P95 latency target.
+- [x] Security and operational controls are configured and documented for production.
 
 ---
 

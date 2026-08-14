@@ -1,8 +1,20 @@
-.claude
-.windsurf
-node_modules
-# Keep environment variables out of version control
-.env
+# Dependencies and generated output
+/node_modules/
+/dist/
+/coverage/
+/src/generated/prisma/
+*.tsbuildinfo
 
-/src/generated/prisma
-node_modules
+# Local environment and logs
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+
+# Local tooling and operating-system files
+/.claude/
+/.windsurf/
+/.opencode/
+.DS_Store
+Thumbs.db

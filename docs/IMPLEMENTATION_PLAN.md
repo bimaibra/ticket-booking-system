@@ -1,12 +1,12 @@
 # Ticket Booking System PRD Compliance Remediation Plan
 
-**Version:** 2.1.0
+**Version:** 2.2.0
 
-**Date:** 2026-08-17
+**Date:** 2026-08-18
 
-**Status:** Proposed; implementation not started
+**Status:** Approved design baseline; implementation not started
 
-**Source:** `docs/PRD_COMPLIANCE_AUDIT.md` and `docs/PRD-ticket-booking-system.md` v1.0.0
+**Source:** immutable `docs/PRD_COMPLIANCE_AUDIT.md` baseline and approved `docs/PRD-ticket-booking-system.md` v1.1.0
 
 ## 1. Purpose
 
@@ -40,59 +40,77 @@ No existing feature is treated as compliant merely because an endpoint or model 
 
 ## 2. Required Design Decisions
 
-These decisions resolve the PRD ambiguities identified by the audit. They must be approved before the API and migration changes are merged. The recommendations below are the implementation defaults for this plan.
+These accepted decisions resolve the PRD ambiguities identified by the audit. Any later deviation requires a versioned PRD or superseding architecture decision record before implementation merges.
 
 ### D1. Inventory Invariant
 
-**Recommendation:** Use derived availability.
+**Decision:** Use derived availability.
 
 `Ticket.total_quota` is immutable capacity except for an authorized quota update. Current availability is:
 
 ```text
 total_quota
-- SUM(quantity of ACTIVE holds whose expires_at > database NOW())
+- SUM(quantity of ACTIVE holds whose expires_at > captured database evaluation_time)
 - SUM(quantity of order details whose parent order is SUCCESS)
 ```
 
 Creating a hold reserves inventory. Converting that hold to a successful order moves the same quantity from temporary to permanent consumption; it does not decrement `total_quota`. Expiry and cancellation release inventory by changing hold status. This interpretation satisfies FR-3.2 without double-counting the FR-5.3 permanent booking.
 
+Public availability reads do not acquire row locks. Each response is calculated by one quantity-aggregating PostgreSQL statement and reports one database evaluation timestamp; it is a point-in-time value that may become stale immediately. Any write whose validity depends on availability must lock affected ticket rows in ascending ID order, capture database wall-clock time after obtaining the required locks, recalculate through the same transaction client, and only then write.
+
 ### D2. Booking Request
 
-**Recommendation:** Make `hold_ids` a required, non-empty array of unique positive integers. A one-hold booking sends a one-element array. Do not maintain two canonical request shapes.
+**Decision:** Make `hold_ids` a required array containing 1-100 unique positive integers. A one-hold booking sends a one-element array. Do not maintain two canonical request shapes.
 
 All holds must belong to the authenticated user. The service locks ticket rows in ascending ID order and then hold rows in ascending ID order. It validates every hold before creating any order side effect.
 
 ### D3. Availability Endpoints
 
-**Recommendation:** Both `GET /events/{id}/tickets` and `GET /events/{id}/availability` return quantity-correct availability from the same service. The ticket endpoint includes the normal ticket fields plus `available_quota` and `last_updated`; the dedicated endpoint may retain its collection wrapper if OpenAPI documents it.
+**Decision:** Both `GET /events/{id}/tickets` and `GET /events/{id}/availability` return quantity-correct availability from the same service. The ticket endpoint includes the normal ticket fields plus `available_quota` and `last_updated`; the dedicated endpoint may retain its collection wrapper if OpenAPI documents it.
 
 ### D4. Order Lifecycle
 
-**Recommendation:** Booking creates an immediate `SUCCESS` order because payment processing is out of scope. Remove the unreachable `POST /orders/{id}/confirm` operation from runtime and OpenAPI in the next versioned contract. If external consumers already use it, deprecate it first and return a defined conflict for non-PENDING orders until removal.
+**Decision:** Booking creates an immediate, immutable `SUCCESS` order because payment, confirmation, cancellation, refund, and order expiry are out of scope. Remove `POST /orders/{id}/confirm`; do not create `PENDING` orders. Remove `expired_at` from the public contract and remove it from storage after migration of any existing rows. Successful order quantities consume inventory permanently. A future cancellation or refund lifecycle requires a versioned PRD decision defining inventory restoration.
 
 ### D5. Idempotency Ownership and Expiry
 
-**Recommendation:** `IdempotencyRecord` is the only uniqueness authority. Remove `Order.idempotency_key` or retain it only as a non-unique audit field. A key is unique by `(key, scope)` while its record exists and can be reused after its configured expiry.
+**Decision:** `IdempotencyRecord` is the only uniqueness authority. Remove `Order.idempotency_key`. A key is unique by `(key, scope)` while its record exists and can be reused after its configured expiry. The versioned scope is `POST /orders:v1`.
 
-The request path inserts a PENDING record as the first statement of the booking transaction. PostgreSQL's unique constraint serializes same-key races. The winner completes the booking and cached response in the same transaction; a loser catches the unique violation and reads the committed winner. Failed business transactions roll back the PENDING claim.
+After authentication and boundary validation, the request path inserts a PENDING record as the first statement of the booking transaction. PostgreSQL's unique constraint serializes same-key races. The winner completes the booking and cached response in the same transaction; a loser catches only the named `(key, scope)` unique violation and reads the committed winner. Failed business transactions roll back the PENDING claim.
+
+Canonicalize the request by sorting validated `hold_ids` numerically and hash the UTF-8 bytes of `{"version":1,"hold_ids":[...]}`. Owner identity is compared separately. Build a versioned public Order DTO containing only OpenAPI fields, decimal strings, UTC ISO-8601 timestamps, and deterministically ordered arrays. Serialize it once to UTF-8 JSON text, store the exact text and status, and send the same bytes for the original response and replay; transport-generated headers are not cached. A malformed COMPLETED cache entry is an internal integrity failure and never causes booking re-execution.
+
+Cache exactly `201 ORDER_CREATED` and caller-owned `410 HOLD_EXPIRED` outcomes in v1. Authentication, authorization, malformed input, missing/foreign holds, idempotency conflicts, database/time-out failures, and all 5xx responses are not cached. TTL starts when a record is completed using database time. Ordinary execution cannot expose uncommitted PENDING records; a committed unexpired PENDING row is recovery state and returns `409 IDEMPOTENCY_IN_PROGRESS` with `Retry-After: 1`.
 
 ### D6. Event Deletion with History
 
-**Recommendation:** Return `409 Conflict` when an event has holds or order history. Cascade deletion remains valid only for events whose tickets have no inventory history. Booking records must not be silently deleted to satisfy FR-1.5.
+**Decision:** Inventory history means any Hold in any status, OrderDetail, or OrderHold associated with a ticket. Event and ticket deletion return `409 HISTORY_RETAINED` when such history exists. A history-free event may be hard-deleted with its history-free tickets. Holds, orders, details, and consumed-hold links are retained indefinitely for this release and have no delete API; idempotency records are operational cache and expire normally. User erasure uses anonymization that removes credentials and direct identifiers while preserving an immutable surrogate owner and booking history; it never cascades into inventory history.
+
+Event deletion locks the event and its ticket rows in ascending ticket ID order before checking history. Ticket creation and hold creation serialize against the same event/ticket boundary as applicable. Named foreign-key violations are translated to `409 HISTORY_RETAINED` as a final race-safe guard, not used as the primary history check.
 
 ## 3. Delivery Rules
 
 - Implement each phase as a reviewable change set and keep migrations forward-only.
-- Use PostgreSQL database time (`NOW()`) for hold and idempotency expiry comparisons.
+- A hold is valid exactly while `expires_at > evaluation_time` and expired when `expires_at <= evaluation_time`. Capture `evaluation_time` once from PostgreSQL `clock_timestamp()` after required row locks are acquired; use it for every row in that operation. Calculate hold and idempotency TTLs in PostgreSQL from `clock_timestamp()`, never application clocks.
 - Use the same Prisma transaction client for every read and write in an inventory operation.
 - Use one lock order everywhere: ticket IDs ascending, then hold IDs ascending.
+- The ticket-then-hold order applies to user-initiated inventory decisions. Scheduler expiry is the sole exception: it conditionally transitions expired ACTIVE holds in bounded `(ticket_id, id)` order without locking Ticket rows because expired ACTIVE rows already consume no derived availability. Booking and cancellation still lock and re-read each hold, making a scheduler race a deterministic non-ACTIVE or expired outcome.
 - Map expected Prisma/database conflicts to explicit API errors; do not expose generic 500 responses for normal races.
 - Return expected business outcomes from transaction callbacks and translate them to HTTP only after commit. Throw only when the transaction must roll back.
 - Do not mark a checkbox complete from mocked tests when the requirement concerns PostgreSQL locking, constraints, migration behavior, or latency.
 - Update OpenAPI and tests in the same change as any public route or response change.
 - Preserve unrelated worktree changes and avoid compatibility aliases unless an identified consumer requires one.
 
-### 3.1 Definition of Done
+### 3.1 Transaction, Retry, and Timeout Policy
+
+- Inventory, booking, deletion-history checks, and idempotency transactions use PostgreSQL `READ COMMITTED` plus explicit row locks.
+- Retry the entire transaction for SQLSTATE `40001` (`serialization_failure`), `40P01` (`deadlock_detected`), or Prisma `P2034` only when it represents those transaction conflicts. Make at most three total attempts with full jitter capped at 100 ms between attempts.
+- Do not retry business outcomes, authentication/authorization failures, malformed input, insufficient inventory, expired holds, generic unique violations, or foreign-key violations.
+- SQLSTATE `23505` is a winner-read path only for the named `(key, scope)` idempotency constraint. Other unique violations follow their documented conflict contracts.
+- Configure and document a 2-second PostgreSQL `lock_timeout`, a 10-second interactive-transaction timeout, and a 5-second Prisma transaction-acquisition maximum wait. A same-key claim lock timeout returns `409 IDEMPOTENCY_IN_PROGRESS` with `Retry-After: 1`; exhausted deadlock/serialization retries return `503 DB_TRANSACTION_RETRY_EXHAUSTED` with `Retry-After: 1`.
+- Tests must inject or provoke each handled SQLSTATE and prove that expected contention never leaks Prisma/database text or becomes an undocumented generic 500.
+
+### 3.2 Definition of Done
 
 An implementation item may be checked only when all applicable conditions are met:
 
@@ -104,7 +122,7 @@ An implementation item may be checked only when all applicable conditions are me
 - The change set records command output or CI artifact links in its pull request and updates the traceability row when a finding is closed.
 - Documentation states observed behavior and limitations; planned controls are not described as already implemented.
 
-### 3.2 Phase Dependencies
+### 3.3 Phase Dependencies
 
 ```text
 Phase 0 (decisions)
@@ -126,15 +144,15 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 **Goal:** Resolve product ambiguities and make documentation truthful before implementation diverges further.
 
-- [ ] Approve D1 through D6 and record any deviations in the PRD with a version bump.
-- [ ] Change `docs/PRD-ticket-booking-system.md` so FR-5.3 describes derived inventory consumption rather than decrementing `total_quota`.
-- [ ] Change FR-5.1 and examples to use `hold_ids`.
-- [ ] State that both ticket listing and availability endpoints expose current availability.
-- [ ] Remove or formally deprecate the payment-confirmation lifecycle.
-- [ ] Mark all PRD acceptance criteria incomplete until their evidence gates pass.
-- [ ] Correct `docs/OPERATIONAL_VERIFICATION.md` so it does not claim Pino logs, metrics, or controls that are absent.
+- [x] Approve D1 through D6 and the transaction, clock, retention, scheduler, and idempotency policies in this plan.
+- [x] Change `docs/PRD-ticket-booking-system.md` so FR-5.3 describes derived inventory consumption rather than decrementing `total_quota`.
+- [x] Change FR-5.1 and examples to use `hold_ids`.
+- [x] State that both ticket listing and availability endpoints expose current availability.
+- [x] Remove the payment-confirmation lifecycle from the approved contract; runtime and OpenAPI removal remain Phase 3 and Phase 5 work.
+- [x] Mark all PRD acceptance criteria incomplete until their evidence gates pass.
+- [x] Correct `docs/OPERATIONAL_VERIFICATION.md` so it does not claim Pino logs, metrics, or controls that are absent.
 
-**Exit evidence:** Approved PRD v1.1 or an architecture decision record covering D1-D6; no completion claim unsupported by a command, test, or deployment artifact.
+**Exit evidence:** Approved PRD v1.1 and this accepted design baseline covering D1-D6 plus transaction/clock/retention policies; no implementation completion claim unsupported by a command, test, or deployment artifact.
 
 ### Phase 1: Real Migration and Testable Application Boundary
 
@@ -159,9 +177,10 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 - [ ] Add `OrderDetail(ticket_id)` index.
 - [ ] Replace free-form `IdempotencyRecord.state` with a Prisma/PostgreSQL enum containing `PENDING` and `COMPLETED`.
 - [ ] Add database `CHECK` constraints in migration SQL for positive ticket quota, positive hold/detail quantity, nonnegative price/subtotal/total, and valid response status values.
-- [ ] Remove the unique constraint from `Order.idempotency_key`; preferably remove the column after any needed data migration.
+- [ ] Remove `Order.idempotency_key` after any required data migration; `IdempotencyRecord(key, scope)` is the only uniqueness authority.
 - [ ] Add an `OrderHold` join model with unique `hold_id` and indexed `order_id`. Migrate existing `Hold.order_id` links, then remove `Hold.order_id`. This permits many holds per order while enforcing at most one order per hold.
 - [ ] Define explicit foreign-key deletion behavior for User, Ticket, Hold, OrderDetail, OrderHold, and IdempotencyRecord.
+- [ ] Implement user anonymization without deleting booking history; preserve a non-personal immutable owner reference required by idempotency and authorization audits.
 - [ ] Add a migration verification query that checks expected constraints and indexes in `pg_catalog`.
 
 **Exit evidence:** `prisma migrate deploy` succeeds against an empty PostgreSQL 16 container; integration tests use that migration; schema constraint tests reject invalid direct database writes.
@@ -174,8 +193,8 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 - [ ] Change `src/services/availability.ts` to accept a Prisma client or transaction client.
 - [ ] Aggregate quantities in PostgreSQL instead of materializing relation rows.
-- [ ] Count only `ACTIVE` holds with `expires_at > NOW()` and order details whose parent order is `SUCCESS`.
-- [ ] Return the database evaluation timestamp as `last_updated` for all tickets in one response.
+- [ ] Count only `ACTIVE` holds with `expires_at > evaluation_time` and order details whose parent order is `SUCCESS`.
+- [ ] Return one captured database `evaluation_time` as `last_updated` for all tickets in one response.
 - [ ] Do not clamp negative availability to zero. Treat a negative result as an invariant violation, log it, and fail the operation so corruption remains visible.
 
 #### Hold creation and cancellation
@@ -200,6 +219,8 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 - [ ] Run repeated concurrent hold attempts whose requested total exceeds quota; assert successful held quantity, not request count, never exceeds capacity.
 - [ ] Test hold cancellation racing with booking and hold expiry racing with booking.
 - [ ] Test quota reduction racing with hold creation.
+- [ ] Test scheduler expiry racing with booking and cancellation, including equality at `expires_at = evaluation_time`.
+- [ ] Test deadlock/serialization retry, idempotency claim lock timeout, and retry exhaustion contracts.
 
 **Exit evidence:** Repeated PostgreSQL-backed contention tests preserve `active hold quantity + successful order quantity <= total_quota` for every ticket.
 
@@ -207,14 +228,15 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 **Goal:** Consume one or more holds exactly once in one transaction.
 
-- [ ] Validate `{ hold_ids: number[] }` as non-empty, unique, and bounded to a documented maximum size.
+- [ ] Validate `{ hold_ids: number[] }` as 1-100 unique positive integers.
 - [ ] Resolve hold IDs to ticket IDs, then lock ticket rows ascending and hold rows ascending; re-read all locked records before validation.
-- [ ] Verify every hold exists, belongs to the user, is ACTIVE, and is unexpired using database time.
-- [ ] If any hold is expired, persist its EXPIRED transition and return a deterministic expired outcome from the transaction; after commit, send `410 Gone` and create no order.
+- [ ] First verify every hold exists and belongs to the user without mutation; use one non-disclosing documented outcome for missing or foreign holds.
+- [ ] Then verify every hold is ACTIVE and unexpired using the captured post-lock evaluation time.
+- [ ] If any caller-owned hold is expired, transition all caller-owned expired holds to EXPIRED, leave still-valid holds ACTIVE, complete the cacheable 410 outcome, commit, and create no order.
 - [ ] Aggregate holds for the same ticket into one `OrderDetail` quantity and calculate Decimal subtotal/total from locked ticket prices.
 - [ ] Create the SUCCESS order, details, `OrderHold` links, and conditional hold status updates in one transaction.
 - [ ] Require the conditional ACTIVE-to-CONSUMED update count to equal the requested hold count; otherwise roll back with `409 Conflict`.
-- [ ] Remove or deprecate `/orders/{id}/confirm` according to D4.
+- [ ] Remove `/orders/{id}/confirm`, `Order.expired_at`, and the unused PENDING creation lifecycle according to D4.
 - [ ] Return the exact order representation selected in OpenAPI; do not wrap it in an undocumented `{ order, hold_id }` object.
 
 #### Booking tests
@@ -233,15 +255,16 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 - [ ] Validate `Idempotency-Key` as UUID v4 in Zod and OpenAPI.
 - [ ] Canonicalize the validated `hold_ids` array before hashing so semantically identical requests have the same hash.
-- [ ] Use `env.IDEMPOTENCY_TTL_SECONDS` and database time to calculate expiry.
-- [ ] At transaction start, delete an expired record for the same key/scope and insert a PENDING claim containing owner, scope, hash, and expiry.
-- [ ] Complete the booking and update that claim to COMPLETED with the exact status code and response body before commit.
+- [ ] Use `env.IDEMPOTENCY_TTL_SECONDS` and `clock_timestamp()` to set expiry at completion.
+- [ ] At transaction start, conditionally delete an expired record for the same key/scope and insert a PENDING claim containing owner, versioned scope, canonical hash, and provisional expiry.
+- [ ] Complete the booking and update that claim to COMPLETED with final expiry, exact status code, and the once-serialized public response bytes before commit.
 - [ ] Catch a `(key, scope)` unique conflict outside the aborted claim transaction, read the committed winning record, and apply these rules:
   - Matching owner/hash and COMPLETED: return the cached status and body.
   - Different owner or hash: return `409 Conflict`.
-  - Matching but PENDING: return a documented retryable response such as `409` with `Retry-After`; this should be limited to legacy/recovery states when claim and work share one transaction.
+  - Matching but PENDING: return `409 IDEMPOTENCY_IN_PROGRESS` with `Retry-After: 1`; this is limited to committed recovery states when claim and work share one transaction.
   - Expired: remove/reclaim it safely and process as new.
-- [ ] Define which deterministic non-2xx results are cached. At minimum, cache a committed expired-hold `410` so retries remain stable.
+- [ ] Cache exactly `201 ORDER_CREATED` and committed caller-owned `410 HOLD_EXPIRED`; do not consume the key for other outcomes.
+- [ ] Validate cached status/body integrity and fail closed without re-executing booking when a COMPLETED record is corrupt.
 - [ ] Ensure unexpected transaction failure rolls back the PENDING claim and permits retry.
 - [ ] Update cleanup so it deletes only expired records and cannot interfere with an uncommitted booking transaction.
 
@@ -289,7 +312,8 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 #### Process and scheduler
 
-- [ ] Retain the cron schedule at 30 seconds but run each expiry/cleanup cycle under a PostgreSQL transaction-level advisory lock so only one instance owns a cycle.
+- [ ] Retain the cron schedule at 30 seconds. Each instance opens one transaction and attempts nonblocking `pg_try_advisory_xact_lock(0x5449434B4554434C)`; a false result performs no maintenance and records a normal lock miss. The key is constant across all instances sharing the database.
+- [ ] In the winning transaction, capture database time once, process expired holds in bounded `(ticket_id, id)` batches, then delete expired idempotency records through the same transaction client. The combined cycle is atomic, has a deadline below 25 seconds, and releases ownership automatically on commit, rollback, or connection loss.
 - [ ] Log scheduler duration, release count, cleanup count, lock miss, and errors.
 - [ ] Handle SIGTERM/SIGINT: stop accepting traffic, stop cron scheduling, drain the HTTP server, disconnect Prisma, and exit within a configured timeout.
 - [ ] Add startup failure and graceful-shutdown tests.
@@ -328,7 +352,7 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 - [ ] Deploy the immutable artifact to staging, apply migrations as a separate release step, and run smoke/concurrency checks there.
 - [ ] Run k6 in a scheduled or release workflow rather than on every small pull request.
 - [ ] Upload coverage, contract, migration, container, and load artifacts.
-- [ ] Update `docs/PRD_COMPLIANCE_AUDIT.md` with a dated re-audit; do not rewrite the original evidence without retaining history.
+- [ ] Create a new dated re-audit document and link it from `docs/PRD_COMPLIANCE_AUDIT.md`; do not rewrite the immutable baseline evidence.
 
 **Release gate:** Production inventory remains blocked until every Phase 8 check is green and the re-audit has no Critical or High unresolved finding.
 

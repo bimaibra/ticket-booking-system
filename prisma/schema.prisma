@@ -49,8 +49,8 @@ model Ticket {
   event_id    Int
   event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
   name        String
-  // Invariant: available_quota = total_quota - SUM(active holds.quantity) - SUM(success order_details.quantity)
-  // Derived on demand inside an explicit row-locking transaction. No materialized counter.
+  // Invariant: available_quota = total_quota - SUM(unexpired ACTIVE holds.quantity) - SUM(SUCCESS order_details.quantity)
+  // Public reads use a point-in-time aggregate; inventory writers recalculate after locking. No materialized counter.
   total_quota Int
   price       Decimal  @db.Decimal(19, 4)
   created_at  DateTime @default(now())

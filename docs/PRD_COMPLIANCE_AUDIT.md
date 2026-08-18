@@ -1,5 +1,7 @@
 # Ticket Booking System PRD Compliance Audit
 
+> **Baseline preservation:** This is an immutable assessment of repository state on 2026-08-14. Later remediation, changed line numbers, or replacement plans do not alter these findings. Re-audits must be new dated documents and link back to this baseline.
+
 **Audit date:** 2026-08-14  
 **PRD:** `docs/PRD-ticket-booking-system.md` version 1.0.0  
 **Assessment:** Not yet aligned; release blockers remain  

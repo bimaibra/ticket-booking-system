@@ -160,28 +160,28 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 #### Application composition
 
-- [ ] Extract `createApp(dependencies)` from `src/server.ts`; keep listening, cron startup, and signal handling in a thin bootstrap module.
-- [ ] Inject the Prisma client into routes/services, or build route factories from an application dependency container. Remove test dependence on a Prisma singleton initialized before `DATABASE_URL` is assigned.
-- [ ] Make scheduler startup opt-in so importing the app in tests does not start background jobs.
-- [ ] Use the same `createApp` composition in production and Supertest.
+- [x] Extract `createApp(dependencies)` from `src/server.ts`; keep listening, cron startup, and signal handling in a thin bootstrap module.
+- [x] Inject the Prisma client into routes/services, or build route factories from an application dependency container. Remove test dependence on a Prisma singleton initialized before `DATABASE_URL` is assigned.
+- [x] Make scheduler startup opt-in so importing the app in tests does not start background jobs.
+- [x] Use the same `createApp` composition in production and Supertest.
 
 #### Integration database
 
-- [ ] Remove hand-written `CREATE TABLE` statements from integration suites.
-- [ ] Start PostgreSQL with Testcontainers, assign `DATABASE_URL`, execute `prisma migrate deploy`, generate or load the client, and only then create the application.
-- [ ] Add shared setup/teardown helpers that isolate suites without changing production DDL.
-- [ ] Add a migration smoke test that initializes an empty PostgreSQL database and performs one representative write/read flow.
+- [x] Remove hand-written `CREATE TABLE` statements from integration suites.
+- [x] Start PostgreSQL with Testcontainers, assign `DATABASE_URL`, execute `prisma migrate deploy`, generate or load the client, and only then create the application.
+- [x] Add shared setup/teardown helpers that isolate suites without changing production DDL.
+- [x] Add a migration smoke test that initializes an empty PostgreSQL database and performs one representative write/read flow.
 
 #### Schema migration
 
-- [ ] Add `OrderDetail(ticket_id)` index.
-- [ ] Replace free-form `IdempotencyRecord.state` with a Prisma/PostgreSQL enum containing `PENDING` and `COMPLETED`.
-- [ ] Add database `CHECK` constraints in migration SQL for positive ticket quota, positive hold/detail quantity, nonnegative price/subtotal/total, and valid response status values.
-- [ ] Remove `Order.idempotency_key` after any required data migration; `IdempotencyRecord(key, scope)` is the only uniqueness authority.
-- [ ] Add an `OrderHold` join model with unique `hold_id` and indexed `order_id`. Migrate existing `Hold.order_id` links, then remove `Hold.order_id`. This permits many holds per order while enforcing at most one order per hold.
-- [ ] Define explicit foreign-key deletion behavior for User, Ticket, Hold, OrderDetail, OrderHold, and IdempotencyRecord.
-- [ ] Implement user anonymization without deleting booking history; preserve a non-personal immutable owner reference required by idempotency and authorization audits.
-- [ ] Add a migration verification query that checks expected constraints and indexes in `pg_catalog`.
+- [x] Add `OrderDetail(ticket_id)` index.
+- [x] Replace free-form `IdempotencyRecord.state` with a Prisma/PostgreSQL enum containing `PENDING` and `COMPLETED`.
+- [x] Add database `CHECK` constraints in migration SQL for positive ticket quota, positive hold/detail quantity, nonnegative price/subtotal/total, and valid response status values.
+- [x] Remove `Order.idempotency_key` after any required data migration; `IdempotencyRecord(key, scope)` is the only uniqueness authority.
+- [x] Add an `OrderHold` join model with unique `hold_id` and indexed `order_id`. Migrate existing `Hold.order_id` links, then remove `Hold.order_id`. This permits many holds per order while enforcing at most one order per hold.
+- [x] Define explicit foreign-key deletion behavior for User, Ticket, Hold, OrderDetail, OrderHold, and IdempotencyRecord.
+- [x] Implement user anonymization without deleting booking history; preserve a non-personal immutable owner reference required by idempotency and authorization audits.
+- [x] Add a migration verification query that checks expected constraints and indexes in `pg_catalog`.
 
 **Exit evidence:** `prisma migrate deploy` succeeds against an empty PostgreSQL 16 container; integration tests use that migration; schema constraint tests reject invalid direct database writes.
 

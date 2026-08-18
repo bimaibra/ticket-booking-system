@@ -1,5 +1,3 @@
-import { prisma } from '../lib/prisma.js';
-
 export interface TicketAvailability {
   ticket_id: number;
   name: string;
@@ -9,7 +7,7 @@ export interface TicketAvailability {
   last_updated: Date;
 }
 
-export async function getTicketAvailability(eventId: number): Promise<TicketAvailability[]> {
+export async function getTicketAvailability(prisma: any, eventId: number): Promise<TicketAvailability[]> {
   const tickets = await prisma.ticket.findMany({
     where: { event_id: eventId },
     include: {
@@ -32,7 +30,7 @@ export async function getTicketAvailability(eventId: number): Promise<TicketAvai
     },
   });
 
-  return tickets.map((ticket) => {
+  return tickets.map((ticket: any) => {
     const confirmedCount = ticket.orderDetails.length;
     const activeHoldCount = ticket.holds.length;
     const available_quota = ticket.total_quota - confirmedCount - activeHoldCount;
@@ -48,6 +46,7 @@ export async function getTicketAvailability(eventId: number): Promise<TicketAvai
   });
 }
 
-export async function getEventAvailability(eventId: number): Promise<TicketAvailability[]> {
-  return getTicketAvailability(eventId);
+export async function getEventAvailability(prisma: any, eventId: number): Promise<TicketAvailability[]> {
+  return getTicketAvailability(prisma, eventId);
 }
+

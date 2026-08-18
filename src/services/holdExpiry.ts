@@ -1,6 +1,6 @@
-import { prisma } from '../lib/prisma.js';
+import type { PrismaClient } from '../generated/prisma/client.js';
 
-export async function releaseExpiredHolds(): Promise<number> {
+export async function releaseExpiredHolds(prisma: PrismaClient): Promise<number> {
   const now = new Date();
 
   const result = await prisma.hold.updateMany({
@@ -18,7 +18,7 @@ export async function releaseExpiredHolds(): Promise<number> {
   return result.count;
 }
 
-export async function cleanupExpiredIdempotencyRecords(): Promise<number> {
+export async function cleanupExpiredIdempotencyRecords(prisma: PrismaClient): Promise<number> {
   const now = new Date();
 
   const result = await prisma.idempotencyRecord.deleteMany({
@@ -31,3 +31,4 @@ export async function cleanupExpiredIdempotencyRecords(): Promise<number> {
 
   return result.count;
 }
+

@@ -1,24 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../src/lib/prisma.js', () => {
-  return {
-    prisma: {
-      ticket: {
-        findMany: vi.fn(),
-      },
-      hold: {
-        updateMany: vi.fn(),
-      },
-      idempotencyRecord: {
-        deleteMany: vi.fn(),
-      },
-    },
-  };
-});
+const mockPrisma = {
+  ticket: {
+    findMany: vi.fn(),
+  },
+  hold: {
+    updateMany: vi.fn(),
+  },
+  idempotencyRecord: {
+    deleteMany: vi.fn(),
+  },
+};
 
 import { getTicketAvailability, getEventAvailability } from '../../src/services/availability.js';
 import { releaseExpiredHolds, cleanupExpiredIdempotencyRecords } from '../../src/services/holdExpiry.js';
-import { prisma } from '../../src/lib/prisma.js';
 import { Prisma } from '../../src/generated/prisma/client.js';
 
 describe('Availability Service', () => {
@@ -38,14 +33,14 @@ describe('Availability Service', () => {
       },
     ];
 
-    vi.mocked(prisma.ticket.findMany).mockResolvedValue(mockTickets as any);
+    mockPrisma.ticket.findMany.mockResolvedValue(mockTickets as any);
 
-    const result = await getTicketAvailability(1);
+    const result = await getTicketAvailability(mockPrisma as any, 1);
 
     expect(result).toHaveLength(1);
     expect(result[0].ticket_id).toBe(1);
     expect(result[0].total_quota).toBe(50);
-    expect(result[0].available_quota).toBe(45); // 50 - 2 confirmed - 3 holds
+    expect(result[0].available_quota).toBe(45);
     expect(result[0].price).toBe('100');
   });
 
@@ -61,9 +56,9 @@ describe('Availability Service', () => {
       },
     ];
 
-    vi.mocked(prisma.ticket.findMany).mockResolvedValue(mockTickets as any);
+    mockPrisma.ticket.findMany.mockResolvedValue(mockTickets as any);
 
-    const result = await getEventAvailability(1);
+    const result = await getEventAvailability(mockPrisma as any, 1);
 
     expect(result[0].available_quota).toBe(0);
   });
@@ -75,12 +70,12 @@ describe('Hold & Idempotency Expiry Service', () => {
   });
 
   it('releaseExpiredHolds updates ACTIVE holds with past expires_at', async () => {
-    vi.mocked(prisma.hold.updateMany).mockResolvedValue({ count: 5 });
+    mockPrisma.hold.updateMany.mockResolvedValue({ count: 5 });
 
-    const count = await releaseExpiredHolds();
+    const count = await releaseExpiredHolds(mockPrisma as any);
 
     expect(count).toBe(5);
-    expect(prisma.hold.updateMany).toHaveBeenCalledWith({
+    expect(mockPrisma.hold.updateMany).toHaveBeenCalledWith({
       where: {
         status: 'ACTIVE',
         expires_at: {
@@ -94,12 +89,12 @@ describe('Hold & Idempotency Expiry Service', () => {
   });
 
   it('cleanupExpiredIdempotencyRecords deletes expired records', async () => {
-    vi.mocked(prisma.idempotencyRecord.deleteMany).mockResolvedValue({ count: 12 });
+    mockPrisma.idempotencyRecord.deleteMany.mockResolvedValue({ count: 12 });
 
-    const count = await cleanupExpiredIdempotencyRecords();
+    const count = await cleanupExpiredIdempotencyRecords(mockPrisma as any);
 
     expect(count).toBe(12);
-    expect(prisma.idempotencyRecord.deleteMany).toHaveBeenCalledWith({
+    expect(mockPrisma.idempotencyRecord.deleteMany).toHaveBeenCalledWith({
       where: {
         expires_at: {
           lt: expect.any(Date),
@@ -108,3 +103,5 @@ describe('Hold & Idempotency Expiry Service', () => {
     });
   });
 });
+
+

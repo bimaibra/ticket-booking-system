@@ -49,8 +49,6 @@ model Ticket {
   event_id    Int
   event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
   name        String
-  // Invariant: available_quota = total_quota - SUM(unexpired ACTIVE holds.quantity) - SUM(SUCCESS order_details.quantity)
-  // Public reads use a point-in-time aggregate; inventory writers recalculate after locking. No materialized counter.
   total_quota Int
   price       Decimal  @db.Decimal(19, 4)
   created_at  DateTime @default(now())
@@ -65,17 +63,16 @@ model Ticket {
 model Hold {
   id         Int        @id @default(autoincrement())
   user_id    Int
-  user       User       @relation(fields: [user_id], references: [id])
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Restrict)
   ticket_id  Int
-  ticket     Ticket     @relation(fields: [ticket_id], references: [id])
-  // Hold-to-order linkage (consumed holds carry their order reference)
-  order_id   Int?
-  order      Order?     @relation(fields: [order_id], references: [id])
+  ticket     Ticket     @relation(fields: [ticket_id], references: [id], onDelete: Restrict)
   quantity   Int
   expires_at DateTime
   status     HoldStatus @default(ACTIVE)
   created_at DateTime   @default(now())
   updated_at DateTime   @updatedAt
+
+  orderHolds OrderHold[]
 
   @@index([ticket_id, status, expires_at])
   @@index([user_id, status])
@@ -90,19 +87,17 @@ enum HoldStatus {
 }
 
 model Order {
-  id              Int           @id @default(autoincrement())
-  user_id         Int
-  user            User          @relation(fields: [user_id], references: [id])
-  total_amount    Decimal       @db.Decimal(19, 4)
-  status          OrderStatus   @default(PENDING)
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @updatedAt
-  expired_at      DateTime
-  // Backward-compatible singular alias; canonical uniqueness is enforced by IdempotencyRecord.
-  idempotency_key String?       @unique
+  id           Int         @id @default(autoincrement())
+  user_id      Int
+  user         User        @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  total_amount Decimal     @db.Decimal(19, 4)
+  status       OrderStatus @default(PENDING)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+  expired_at   DateTime
 
-  details OrderDetail[]
-  holds   Hold[]
+  details    OrderDetail[]
+  orderHolds OrderHold[]
 
   @@index([user_id, created_at])
   @@index([status])
@@ -120,28 +115,43 @@ model OrderDetail {
   order_id  Int
   order     Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
   ticket_id Int
-  ticket    Ticket  @relation(fields: [ticket_id], references: [id])
+  ticket    Ticket  @relation(fields: [ticket_id], references: [id], onDelete: Restrict)
   price     Decimal @db.Decimal(19, 4)
   quantity  Int
   subtotal  Decimal @db.Decimal(19, 4)
+
+  @@index([ticket_id])
 }
 
-// Durable idempotency record: payload hash + cached response + lifecycle state + 24h expiry.
-// `state` is either PENDING (request in flight) or COMPLETED (response cached).
-// `scope` identifies the endpoint (e.g. "POST /orders") so the same key can be reused across routes.
+model OrderHold {
+  id       Int  @id @default(autoincrement())
+  order_id Int
+  order    Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  hold_id  Int
+  hold     Hold  @relation(fields: [hold_id], references: [id], onDelete: Restrict)
+
+  @@unique([hold_id])
+  @@index([order_id])
+}
+
+enum IdempotencyState {
+  PENDING
+  COMPLETED
+}
+
 model IdempotencyRecord {
-  id            Int      @id @default(autoincrement())
+  id            Int              @id @default(autoincrement())
   key           String
   scope         String
   payload_hash  String
   response_body String?
   status_code   Int?
-  state         String   @default("PENDING")
+  state         IdempotencyState @default(PENDING)
   user_id       Int?
-  user          User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user          User?            @relation(fields: [user_id], references: [id], onDelete: SetNull)
   expires_at    DateTime
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
 
   @@unique([key, scope])
   @@index([expires_at])

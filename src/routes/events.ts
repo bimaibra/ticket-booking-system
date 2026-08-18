@@ -1,12 +1,10 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
-import { prisma } from '../lib/prisma.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
 import { getEventAvailability } from '../services/availability.js';
-
-const router = Router();
 
 const createEventSchema = z.object({
   name: z.string().min(1).max(200),
@@ -22,128 +20,133 @@ const updateEventSchema = z.object({
   address: z.string().max(500).optional(),
 });
 
-router.get('/', async (_req: Request, res: Response) => {
-  const events = await prisma.event.findMany({
-    orderBy: { event_date: 'asc' },
-  });
-  res.json(events);
-});
+export function createEventsRouter(prisma: PrismaClient): Router {
+  const router = Router();
 
-router.get('/:id', async (req: Request, res: Response) => {
-  const id = Number.parseInt(req.params.id as string, 10);
-  if (Number.isNaN(id)) {
-    throw new ValidationError('Invalid event ID');
-  }
-
-  const event = await prisma.event.findUnique({ where: { id } });
-  if (!event) {
-    throw new NotFoundError('Event');
-  }
-
-  res.json(event);
-});
-
-router.post('/', authenticate, requireAdmin, async (req: Request, res: Response) => {
-  const parsed = createEventSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new ValidationError(parsed.error.issues.map((i) => i.message).join('; '));
-  }
-
-  const event = await prisma.event.create({
-    data: {
-      name: parsed.data.name,
-      event_date: new Date(parsed.data.event_date),
-      description: parsed.data.description,
-      address: parsed.data.address,
-    },
+  router.get('/', async (_req: Request, res: Response) => {
+    const events = await prisma.event.findMany({
+      orderBy: { event_date: 'asc' },
+    });
+    res.json(events);
   });
 
-  res.status(201).json(event);
-});
+  router.get('/:id', async (req: Request, res: Response) => {
+    const id = Number.parseInt(req.params.id as string, 10);
+    if (Number.isNaN(id)) {
+      throw new ValidationError('Invalid event ID');
+    }
 
-router.put('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
-  const id = Number.parseInt(req.params.id as string, 10);
-  if (Number.isNaN(id)) {
-    throw new ValidationError('Invalid event ID');
-  }
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) {
+      throw new NotFoundError('Event');
+    }
 
-  const parsed = updateEventSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new ValidationError(parsed.error.issues.map((i) => i.message).join('; '));
-  }
-
-  const existing = await prisma.event.findUnique({ where: { id } });
-  if (!existing) {
-    throw new NotFoundError('Event');
-  }
-
-  const data: Record<string, unknown> = {};
-  if (parsed.data.name !== undefined) data.name = parsed.data.name;
-  if (parsed.data.event_date !== undefined) data.event_date = new Date(parsed.data.event_date);
-  if (parsed.data.description !== undefined) data.description = parsed.data.description;
-  if (parsed.data.address !== undefined) data.address = parsed.data.address;
-
-  const event = await prisma.event.update({ where: { id }, data });
-  res.json(event);
-});
-
-router.patch('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
-  const id = Number.parseInt(req.params.id as string, 10);
-  if (Number.isNaN(id)) {
-    throw new ValidationError('Invalid event ID');
-  }
-
-  const parsed = updateEventSchema.safeParse(req.body);
-  if (!parsed.success) {
-    throw new ValidationError(parsed.error.issues.map((i) => i.message).join('; '));
-  }
-
-  const existing = await prisma.event.findUnique({ where: { id } });
-  if (!existing) {
-    throw new NotFoundError('Event');
-  }
-
-  const data: Record<string, unknown> = {};
-  if (parsed.data.name !== undefined) data.name = parsed.data.name;
-  if (parsed.data.event_date !== undefined) data.event_date = new Date(parsed.data.event_date);
-  if (parsed.data.description !== undefined) data.description = parsed.data.description;
-  if (parsed.data.address !== undefined) data.address = parsed.data.address;
-
-  const event = await prisma.event.update({ where: { id }, data });
-  res.json(event);
-});
-
-router.delete('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
-  const id = Number.parseInt(req.params.id as string, 10);
-  if (Number.isNaN(id)) {
-    throw new ValidationError('Invalid event ID');
-  }
-
-  const existing = await prisma.event.findUnique({ where: { id } });
-  if (!existing) {
-    throw new NotFoundError('Event');
-  }
-
-  await prisma.event.delete({ where: { id } });
-  res.status(204).end();
-});
-
-router.get('/:id/availability', async (req: Request, res: Response) => {
-  const id = Number.parseInt(req.params.id as string, 10);
-  if (Number.isNaN(id)) {
-    throw new ValidationError('Invalid event ID');
-  }
-
-  const event = await prisma.event.findUnique({ where: { id } });
-  if (!event) {
-    throw new NotFoundError('Event');
-  }
-
-  const availability = await getEventAvailability(id);
-  res.json({
-    event_id: id,
-    tickets: availability,
+    res.json(event);
   });
-});
 
-export default router;
+  router.post('/', authenticate, requireAdmin, async (req: Request, res: Response) => {
+    const parsed = createEventSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+
+    const event = await prisma.event.create({
+      data: {
+        name: parsed.data.name,
+        event_date: new Date(parsed.data.event_date),
+        description: parsed.data.description,
+        address: parsed.data.address,
+      },
+    });
+
+    res.status(201).json(event);
+  });
+
+  router.put('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+    const id = Number.parseInt(req.params.id as string, 10);
+    if (Number.isNaN(id)) {
+      throw new ValidationError('Invalid event ID');
+    }
+
+    const parsed = updateEventSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+
+    const existing = await prisma.event.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Event');
+    }
+
+    const data: Record<string, unknown> = {};
+    if (parsed.data.name !== undefined) data.name = parsed.data.name;
+    if (parsed.data.event_date !== undefined) data.event_date = new Date(parsed.data.event_date);
+    if (parsed.data.description !== undefined) data.description = parsed.data.description;
+    if (parsed.data.address !== undefined) data.address = parsed.data.address;
+
+    const event = await prisma.event.update({ where: { id }, data });
+    res.json(event);
+  });
+
+  router.patch('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+    const id = Number.parseInt(req.params.id as string, 10);
+    if (Number.isNaN(id)) {
+      throw new ValidationError('Invalid event ID');
+    }
+
+    const parsed = updateEventSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues.map((i) => i.message).join('; '));
+    }
+
+    const existing = await prisma.event.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Event');
+    }
+
+    const data: Record<string, unknown> = {};
+    if (parsed.data.name !== undefined) data.name = parsed.data.name;
+    if (parsed.data.event_date !== undefined) data.event_date = new Date(parsed.data.event_date);
+    if (parsed.data.description !== undefined) data.description = parsed.data.description;
+    if (parsed.data.address !== undefined) data.address = parsed.data.address;
+
+    const event = await prisma.event.update({ where: { id }, data });
+    res.json(event);
+  });
+
+  router.delete('/:id', authenticate, requireAdmin, async (req: Request, res: Response) => {
+    const id = Number.parseInt(req.params.id as string, 10);
+    if (Number.isNaN(id)) {
+      throw new ValidationError('Invalid event ID');
+    }
+
+    const existing = await prisma.event.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Event');
+    }
+
+    await prisma.event.delete({ where: { id } });
+    res.status(204).end();
+  });
+
+  router.get('/:id/availability', async (req: Request, res: Response) => {
+    const id = Number.parseInt(req.params.id as string, 10);
+    if (Number.isNaN(id)) {
+      throw new ValidationError('Invalid event ID');
+    }
+
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) {
+      throw new NotFoundError('Event');
+    }
+
+    const availability = await getEventAvailability(prisma, id);
+    res.json({
+      event_id: id,
+      tickets: availability,
+    });
+  });
+
+  return router;
+}
+

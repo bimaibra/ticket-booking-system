@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
-import eventsRouter from '../../src/routes/events.js';
+import { createEventsRouter } from '../../src/routes/events.js';
 import { AppError } from '../../src/utils/errors.js';
 
 vi.mock('../../src/services/availability.js', () => ({
@@ -15,24 +15,23 @@ vi.mock('../../src/services/availability.js', () => ({
       last_updated: new Date(),
     },
   ]),
+  getTicketAvailability: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock('../../src/lib/prisma.js', () => ({
-  prisma: {
-    event: {
-      findUnique: vi.fn().mockResolvedValue({
-        id: 1,
-        name: 'Tech Conference 2026',
-        event_date: new Date(),
-      }),
-    },
+const mockPrisma = {
+  event: {
+    findUnique: vi.fn().mockResolvedValue({
+      id: 1,
+      name: 'Tech Conference 2026',
+      event_date: new Date(),
+    }),
   },
-}));
+};
 
 describe('Load & Latency Benchmark Simulation', () => {
   const app = express();
   app.use(express.json());
-  app.use('/events', eventsRouter);
+  app.use('/events', createEventsRouter(mockPrisma as any));
 
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     if (error instanceof AppError) {
@@ -52,7 +51,7 @@ describe('Load & Latency Benchmark Simulation', () => {
     const duration = Date.now() - startTime;
 
     expect(responses.every((r) => r.status === 200)).toBe(true);
-    expect(duration).toBeLessThan(3000); // 100 mock requests in node process < 3s batch
+    expect(duration).toBeLessThan(3000);
     expect(responses[0].body.tickets[0].available_quota).toBe(85);
   });
 });

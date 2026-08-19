@@ -22,45 +22,45 @@ describe('Availability Service', () => {
   });
 
   it('calculates available quota correctly considering confirmed orders and active holds', async () => {
-    const mockTickets = [
-      {
-        id: 1,
-        name: 'VIP Ticket',
-        price: new Prisma.Decimal('100.00'),
-        total_quota: 50,
-        orderDetails: [{ order_id: 101 }, { order_id: 102 }],
-        holds: [{ id: 1 }, { id: 2 }, { id: 3 }],
-      },
-    ];
+    const mockPrismaTx = {
+      $queryRawUnsafe: vi.fn().mockResolvedValue([
+        {
+          ticket_id: 1,
+          name: 'VIP Ticket',
+          price: '100.00',
+          total_quota: 50,
+          available_quota: 45,
+          last_updated: '2026-08-19T00:00:00.000Z',
+        },
+      ]),
+    };
 
-    mockPrisma.ticket.findMany.mockResolvedValue(mockTickets as any);
-
-    const result = await getTicketAvailability(mockPrisma as any, 1);
+    const result = await getTicketAvailability(mockPrismaTx as any, 1);
 
     expect(result).toHaveLength(1);
     expect(result[0].ticket_id).toBe(1);
     expect(result[0].total_quota).toBe(50);
     expect(result[0].available_quota).toBe(45);
-    expect(result[0].price).toBe('100');
+    expect(result[0].price).toBe('100.00');
   });
 
-  it('clamps available_quota to 0 if holds/orders exceed total quota', async () => {
-    const mockTickets = [
-      {
-        id: 2,
-        name: 'Standard Ticket',
-        price: new Prisma.Decimal('50.00'),
-        total_quota: 2,
-        orderDetails: [{ order_id: 101 }, { order_id: 102 }],
-        holds: [{ id: 1 }],
-      },
-    ];
+  it('fails if available_quota is negative (invariant violation)', async () => {
+    const mockPrismaTx = {
+      $queryRawUnsafe: vi.fn().mockResolvedValue([
+        {
+          ticket_id: 2,
+          name: 'Standard Ticket',
+          price: '50.00',
+          total_quota: 2,
+          available_quota: -1,
+          last_updated: '2026-08-19T00:00:00.000Z',
+        },
+      ]),
+    };
 
-    mockPrisma.ticket.findMany.mockResolvedValue(mockTickets as any);
-
-    const result = await getEventAvailability(mockPrisma as any, 1);
-
-    expect(result[0].available_quota).toBe(0);
+    await expect(getEventAvailability(mockPrismaTx as any, 1)).rejects.toThrow(
+      'Inventory invariant violation for ticket 2',
+    );
   });
 });
 

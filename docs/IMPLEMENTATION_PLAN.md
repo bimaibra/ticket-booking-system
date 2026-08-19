@@ -191,36 +191,36 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 #### Availability service
 
-- [ ] Change `src/services/availability.ts` to accept a Prisma client or transaction client.
-- [ ] Aggregate quantities in PostgreSQL instead of materializing relation rows.
-- [ ] Count only `ACTIVE` holds with `expires_at > evaluation_time` and order details whose parent order is `SUCCESS`.
-- [ ] Return one captured database `evaluation_time` as `last_updated` for all tickets in one response.
-- [ ] Do not clamp negative availability to zero. Treat a negative result as an invariant violation, log it, and fail the operation so corruption remains visible.
+- [x] Change `src/services/availability.ts` to accept a Prisma client or transaction client.
+- [x] Aggregate quantities in PostgreSQL instead of materializing relation rows.
+- [x] Count only `ACTIVE` holds with `expires_at > evaluation_time` and order details whose parent order is `SUCCESS`.
+- [x] Return one captured database `evaluation_time` as `last_updated` for all tickets in one response.
+- [x] Do not clamp negative availability to zero. Treat a negative result as an invariant violation, log it, and fail the operation so corruption remains visible.
 
 #### Hold creation and cancellation
 
-- [ ] In `POST /holds`, begin a transaction, lock the ticket with parameterized `SELECT ... FOR UPDATE`, calculate availability through `tx`, validate quantity, and insert the hold through `tx`.
-- [ ] Include the current available count in the defined `409 Conflict` response for insufficient quota.
-- [ ] In `DELETE /holds/{id}`, lock the ticket and hold, revalidate ownership/status/expiry, and perform a conditional ACTIVE-to-CANCELLED update.
-- [ ] Return an expired outcome from the transaction, commit ACTIVE-to-EXPIRED, and then send `410 Gone` outside the transaction callback.
-- [ ] Parse hold TTL from validated `env`, not directly from `process.env`.
+- [x] In `POST /holds`, begin a transaction, lock the ticket with parameterized `SELECT ... FOR UPDATE`, calculate availability through `tx`, validate quantity, and insert the hold through `tx`.
+- [x] Include the current available count in the defined `409 Conflict` response for insufficient quota.
+- [x] In `DELETE /holds/{id}`, lock the ticket and hold, revalidate ownership/status/expiry, and perform a conditional ACTIVE-to-CANCELLED update.
+- [x] Return an expired outcome from the transaction, commit ACTIVE-to-EXPIRED, and then send `410 Gone` outside the transaction callback.
+- [x] Parse hold TTL from validated `env`, not directly from `process.env`.
 
 #### Quota and deletion safety
 
-- [ ] Wrap quota changes in a ticket-row-locking transaction.
-- [ ] Calculate active plus successful allocated quantity and reject `total_quota` below that amount with `409 Conflict`.
-- [ ] Define the response when an event or ticket has history and convert foreign-key failures to the approved conflict contract.
+- [x] Wrap quota changes in a ticket-row-locking transaction.
+- [x] Calculate active plus successful allocated quantity and reject `total_quota` below that amount with `409 Conflict`.
+- [x] Define the response when an event or ticket has history and convert foreign-key failures to the approved conflict contract.
 
 #### Inventory tests
 
-- [ ] Test quantities greater than one for active holds and successful orders.
-- [ ] Prove PENDING, CANCELLED, and EXPIRED orders do not consume availability.
-- [ ] Prove expired ACTIVE rows do not consume availability before the scheduler updates their status.
-- [ ] Run repeated concurrent hold attempts whose requested total exceeds quota; assert successful held quantity, not request count, never exceeds capacity.
-- [ ] Test hold cancellation racing with booking and hold expiry racing with booking.
-- [ ] Test quota reduction racing with hold creation.
-- [ ] Test scheduler expiry racing with booking and cancellation, including equality at `expires_at = evaluation_time`.
-- [ ] Test deadlock/serialization retry, idempotency claim lock timeout, and retry exhaustion contracts.
+- [x] Test quantities greater than one for active holds and successful orders.
+- [x] Prove PENDING, CANCELLED, and EXPIRED orders do not consume availability.
+- [x] Prove expired ACTIVE rows do not consume availability before the scheduler updates their status.
+- [x] Run repeated concurrent hold attempts whose requested total exceeds quota; assert successful held quantity, not request count, never exceeds capacity.
+- [x] Test hold cancellation racing with booking and hold expiry racing with booking.
+- [x] Test quota reduction racing with hold creation.
+- [x] Test scheduler expiry racing with booking and cancellation, including equality at `expires_at = evaluation_time`.
+- [x] Test deadlock/serialization retry, idempotency claim lock timeout, and retry exhaustion contracts.
 
 **Exit evidence:** Repeated PostgreSQL-backed contention tests preserve `active hold quantity + successful order quantity <= total_quota` for every ticket.
 

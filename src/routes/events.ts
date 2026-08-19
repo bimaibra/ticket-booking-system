@@ -3,8 +3,13 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
-import { NotFoundError, ValidationError } from '../utils/errors.js';
+import {
+  NotFoundError,
+  ValidationError,
+  HistoryRetainedError,
+} from '../utils/errors.js';
 import { getEventAvailability } from '../services/availability.js';
+import { withTransactionRetry } from '../utils/transaction.js';
 
 const createEventSchema = z.object({
   name: z.string().min(1).max(200),
@@ -125,7 +130,55 @@ export function createEventsRouter(prisma: PrismaClient): Router {
       throw new NotFoundError('Event');
     }
 
-    await prisma.event.delete({ where: { id } });
+    await withTransactionRetry(prisma, async (tx) => {
+      const eventRows = await tx.$queryRawUnsafe<Array<{ id: number }>>(
+        `SELECT id FROM "Event" WHERE id = $1 FOR UPDATE`,
+        id,
+      );
+      if (eventRows.length === 0) {
+        throw new NotFoundError('Event');
+      }
+
+      const tickets = await tx.$queryRawUnsafe<Array<{ id: number }>>(
+        `SELECT id FROM "Ticket" WHERE event_id = $1 ORDER BY id ASC FOR UPDATE`,
+        id,
+      );
+
+      const ticketIds = tickets.map((t) => t.id);
+
+      if (ticketIds.length > 0) {
+        const holdCount = await tx.hold.count({
+          where: { ticket_id: { in: ticketIds } },
+        });
+        if (holdCount > 0) {
+          throw new HistoryRetainedError('Cannot delete event with existing hold history');
+        }
+
+        const orderDetailCount = await tx.orderDetail.count({
+          where: { ticket_id: { in: ticketIds } },
+        });
+        if (orderDetailCount > 0) {
+          throw new HistoryRetainedError('Cannot delete event with existing order history');
+        }
+
+        const orderHoldCount = await tx.orderHold.count({
+          where: { hold: { ticket_id: { in: ticketIds } } },
+        });
+        if (orderHoldCount > 0) {
+          throw new HistoryRetainedError('Cannot delete event with existing order hold history');
+        }
+      }
+
+      try {
+        await tx.event.delete({ where: { id } });
+      } catch (error: any) {
+        if (error && (error.code === 'P2003' || error.code === '23503')) {
+          throw new HistoryRetainedError('Cannot delete event with existing history');
+        }
+        throw error;
+      }
+    });
+
     res.status(204).end();
   });
 
@@ -149,4 +202,3 @@ export function createEventsRouter(prisma: PrismaClient): Router {
 
   return router;
 }
-

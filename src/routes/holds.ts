@@ -3,14 +3,19 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { authenticate } from '../middleware/auth.js';
-import { NotFoundError, ValidationError, ConflictError } from '../utils/errors.js';
-import { getTicketAvailability } from '../services/availability.js';
+import { NotFoundError, ValidationError, ConflictError, GoneError } from '../utils/errors.js';
+import { getSingleTicketAvailability } from '../services/availability.js';
 import { env } from '../config/env.js';
+import { withTransactionRetry } from '../utils/transaction.js';
 
 const createHoldSchema = z.object({
   ticket_id: z.number().int().positive(),
   quantity: z.number().int().positive().default(1),
 });
+
+const HOLD_TTL_SECONDS = Number(env.HOLD_TTL_SECONDS);
+
+const HOLD_EXPIRED_RESULT = Symbol('HOLD_EXPIRED');
 
 export function createHoldsRouter(prisma: PrismaClient): Router {
   const router = Router();
@@ -27,39 +32,36 @@ export function createHoldsRouter(prisma: PrismaClient): Router {
     }
 
     const { ticket_id, quantity } = parsed.data;
-    const holdTTLSeconds = Number.parseInt(env.HOLD_TTL_SECONDS, 10);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticket.findUnique({
-        where: { id: ticket_id },
-        include: {
-          event: { select: { id: true } },
-        },
-      });
+    const result = await withTransactionRetry(prisma, async (tx) => {
+      const ticket = await tx.$queryRawUnsafe<Array<{ id: number }>>(
+        `SELECT id FROM "Ticket" WHERE id = $1 FOR UPDATE`,
+        ticket_id,
+      );
 
-      if (!ticket) {
+      if (ticket.length === 0) {
         throw new NotFoundError('Ticket');
       }
 
-      const availability = await getTicketAvailability(tx, ticket.event_id);
-      const ticketAvailability = availability.find((a) => a.ticket_id === ticket_id);
-      if (!ticketAvailability || ticketAvailability.available_quota < quantity) {
-        throw new ConflictError('Insufficient quota for hold');
+      const ticketAvailability = await getSingleTicketAvailability(tx, ticket_id);
+
+      if (ticketAvailability.available_quota < quantity) {
+        throw new ConflictError(
+          `Insufficient quota for hold: requested ${quantity}, available ${ticketAvailability.available_quota}`,
+        );
       }
 
-      const expiresAt = new Date(Date.now() + holdTTLSeconds * 1000);
+      const evaluationTime = new Date(ticketAvailability.last_updated);
 
-      const hold = await tx.hold.create({
+      return tx.hold.create({
         data: {
           ticket_id,
           user_id: userId,
           quantity,
-          expires_at: expiresAt,
+          expires_at: new Date(evaluationTime.getTime() + HOLD_TTL_SECONDS * 1000),
           status: 'ACTIVE',
         },
       });
-
-      return hold;
     });
 
     res.status(201).json(result);
@@ -76,30 +78,59 @@ export function createHoldsRouter(prisma: PrismaClient): Router {
       throw new ValidationError('Invalid hold ID');
     }
 
-    const hold = await prisma.hold.findUnique({
-      where: { id },
+    const result = await withTransactionRetry(prisma, async (tx) => {
+      const hold = await tx.hold.findUnique({
+        where: { id },
+      });
+
+      if (!hold) {
+        throw new NotFoundError('Hold');
+      }
+
+      const ticket = await tx.$queryRawUnsafe<Array<{ id: number }>>(
+        `SELECT id FROM "Ticket" WHERE id = $1 FOR UPDATE`,
+        hold.ticket_id,
+      );
+
+      const lockedHold = await tx.hold.findUnique({
+        where: { id },
+      });
+
+      if (!lockedHold || lockedHold.user_id !== userId) {
+        throw new ValidationError('Cannot cancel hold owned by another user');
+      }
+
+      const evalResult = await tx.$queryRawUnsafe<Array<{ eval_time: Date }>>(
+        `SELECT clock_timestamp() AS eval_time`,
+      );
+      const evalTime = evalResult[0]?.eval_time ? new Date(evalResult[0].eval_time) : new Date();
+
+      if (lockedHold.status === 'EXPIRED' || lockedHold.expires_at <= evalTime) {
+        if (lockedHold.status === 'ACTIVE') {
+          await tx.hold.update({
+            where: { id },
+            data: { status: 'EXPIRED' },
+          });
+        }
+        return HOLD_EXPIRED_RESULT;
+      }
+
+      if (lockedHold.status !== 'ACTIVE') {
+        throw new ValidationError(`Hold is already ${lockedHold.status.toLowerCase()}`);
+      }
+
+      return tx.hold.update({
+        where: { id },
+        data: { status: 'CANCELLED' },
+      });
     });
 
-    if (!hold) {
-      throw new NotFoundError('Hold');
+    if (result === HOLD_EXPIRED_RESULT) {
+      throw new GoneError('Hold has expired');
     }
 
-    if (hold.user_id !== userId) {
-      throw new ValidationError('Cannot cancel hold owned by another user');
-    }
-
-    if (hold.status !== 'ACTIVE') {
-      throw new ValidationError(`Hold is already ${hold.status.toLowerCase()}`);
-    }
-
-    const updated = await prisma.hold.update({
-      where: { id },
-      data: { status: 'CANCELLED' },
-    });
-
-    res.json(updated);
+    res.json(result);
   });
 
   return router;
 }
-

@@ -195,5 +195,4 @@ describe('Booking & Concurrency Integration', () => {
     expect(successes.length + failures.length).toBe(10);
   });
 });
-
 </content>

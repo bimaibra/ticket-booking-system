@@ -58,7 +58,6 @@ describe('Migration Smoke Test', () => {
         user_id: user.id,
         total_amount: '50.00',
         status: 'SUCCESS',
-        expired_at: new Date(Date.now() + 900000),
         details: {
           create: {
             ticket_id: ticket.id,

@@ -10,6 +10,21 @@ export interface TestDatabase {
 }
 
 export async function startTestDatabase(): Promise<TestDatabase> {
+  if (process.env.TEST_DATABASE_URL) {
+    const connectionString = process.env.TEST_DATABASE_URL;
+    process.env.DATABASE_URL = connectionString;
+
+    execSync('npx prisma migrate deploy', {
+      stdio: 'pipe',
+      env: { ...process.env, DATABASE_URL: connectionString },
+    });
+
+    const adapter = new PrismaPg({ connectionString });
+    const prisma = new PrismaClient({ adapter });
+
+    return { container: null, prisma, connectionString };
+  }
+
   const container = await new PostgreSqlContainer('postgres:16-alpine').start();
   const connectionString = container.getConnectionUri();
 
@@ -28,11 +43,14 @@ export async function startTestDatabase(): Promise<TestDatabase> {
 
 export async function stopTestDatabase(db: TestDatabase): Promise<void> {
   await db.prisma.$disconnect();
-  await db.container.stop();
+  if (db.container) {
+    await db.container.stop();
+  }
 }
 
 export async function cleanDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.idempotencyRecord.deleteMany();
+  await prisma.orderHold.deleteMany();
   await prisma.orderDetail.deleteMany();
   await prisma.order.deleteMany();
   await prisma.hold.deleteMany();

@@ -228,24 +228,24 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 **Goal:** Consume one or more holds exactly once in one transaction.
 
-- [ ] Validate `{ hold_ids: number[] }` as 1-100 unique positive integers.
-- [ ] Resolve hold IDs to ticket IDs, then lock ticket rows ascending and hold rows ascending; re-read all locked records before validation.
-- [ ] First verify every hold exists and belongs to the user without mutation; use one non-disclosing documented outcome for missing or foreign holds.
-- [ ] Then verify every hold is ACTIVE and unexpired using the captured post-lock evaluation time.
-- [ ] If any caller-owned hold is expired, transition all caller-owned expired holds to EXPIRED, leave still-valid holds ACTIVE, complete the cacheable 410 outcome, commit, and create no order.
-- [ ] Aggregate holds for the same ticket into one `OrderDetail` quantity and calculate Decimal subtotal/total from locked ticket prices.
-- [ ] Create the SUCCESS order, details, `OrderHold` links, and conditional hold status updates in one transaction.
-- [ ] Require the conditional ACTIVE-to-CONSUMED update count to equal the requested hold count; otherwise roll back with `409 Conflict`.
-- [ ] Remove `/orders/{id}/confirm`, `Order.expired_at`, and the unused PENDING creation lifecycle according to D4.
-- [ ] Return the exact order representation selected in OpenAPI; do not wrap it in an undocumented `{ order, hold_id }` object.
+- [x] Validate `{ hold_ids: number[] }` as 1-100 unique positive integers.
+- [x] Resolve hold IDs to ticket IDs, then lock ticket rows ascending and hold rows ascending; re-read all locked records before validation.
+- [x] First verify every hold exists and belongs to the user without mutation; use one non-disclosing documented outcome for missing or foreign holds.
+- [x] Then verify every hold is ACTIVE and unexpired using the captured post-lock evaluation time.
+- [x] If any caller-owned hold is expired, transition all caller-owned expired holds to EXPIRED, leave still-valid holds ACTIVE, complete the cacheable 410 outcome, commit, and create no order.
+- [x] Aggregate holds for the same ticket into one `OrderDetail` quantity and calculate Decimal subtotal/total from locked ticket prices.
+- [x] Create the SUCCESS order, details, `OrderHold` links, and conditional hold status updates in one transaction.
+- [x] Require the conditional ACTIVE-to-CONSUMED update count to equal the requested hold count; otherwise roll back with `409 Conflict`.
+- [x] Remove `/orders/{id}/confirm`, `Order.expired_at`, and the unused PENDING creation lifecycle according to D4.
+- [x] Return the exact order representation selected in OpenAPI; do not wrap it in an undocumented `{ order, hold_id }` object.
 
 #### Booking tests
 
-- [ ] Book one hold and multiple holds, including multiple holds for the same ticket.
-- [ ] Attempt the same hold concurrently with different idempotency keys; assert exactly one order and one `OrderHold` link.
-- [ ] Verify mixed valid/expired/foreign-user hold sets create no partial order.
-- [ ] Inject failures after order creation, detail creation, link creation, and status update; assert complete rollback.
-- [ ] Verify deterministic locking with reversed input order does not deadlock.
+- [x] Book one hold and multiple holds, including multiple holds for the same ticket.
+- [x] Attempt the same hold concurrently with different idempotency keys; assert exactly one order and one `OrderHold` link.
+- [x] Verify mixed valid/expired/foreign-user hold sets create no partial order.
+- [x] Inject failures after order creation, detail creation, link creation, and status update; assert complete rollback.
+- [x] Verify deterministic locking with reversed input order does not deadlock.
 
 **Exit evidence:** Repeated same-hold contention creates exactly one successful order, and multi-hold failure leaves every valid hold unchanged.
 

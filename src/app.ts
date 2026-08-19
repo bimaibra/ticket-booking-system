@@ -41,7 +41,7 @@ export function createApp(deps: AppDependencies, _options?: CreateAppOptions): E
 
   app.use('/auth', createAuthRouter(deps.prisma));
   app.use('/events', createEventsRouter(deps.prisma));
-  app.use('/events', createTicketsRouter(deps.prisma));
+  app.use(createTicketsRouter(deps.prisma));
   app.use('/admin', createAdminRouter(deps.prisma));
   app.use('/', createOrdersRouter(deps.prisma));
   app.use('/', createHoldsRouter(deps.prisma));

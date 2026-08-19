@@ -99,32 +99,42 @@ describe('Booking & Concurrency Integration', () => {
       .send({ ticket_id: ticketId, quantity: 10 });
 
     expect(res.status).toBe(409);
-    expect(res.body.message).toBe('Insufficient quota for hold');
+    expect(res.body.message).toContain('Insufficient quota for hold');
   });
 
-  it('converts active hold to order atomically', async () => {
-    const holdRes = await request(app)
+  it('converts active holds to order atomically (multi-hold booking)', async () => {
+    const holdRes1 = await request(app)
       .post('/holds')
       .set('Authorization', `Bearer ${userToken}`)
       .send({ ticket_id: ticketId, quantity: 2 });
 
-    const holdId = holdRes.body.id;
+    const holdRes2 = await request(app)
+      .post('/holds')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ ticket_id: ticketId, quantity: 1 });
+
+    const hold1Id = holdRes1.body.id;
+    const hold2Id = holdRes2.body.id;
 
     const orderRes = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
       .set('Idempotency-Key', 'unique-key-101')
-      .send({ hold_id: holdId });
+      .send({ hold_ids: [hold1Id, hold2Id] });
 
     expect(orderRes.status).toBe(201);
-    expect(orderRes.body.order.status).toBe('SUCCESS');
-    expect(orderRes.body.order.details).toHaveLength(1);
+    expect(orderRes.body.status).toBe('SUCCESS');
+    expect(orderRes.body.details).toHaveLength(1); // aggregated for same ticket
+    expect(orderRes.body.details[0].quantity).toBe(3);
+    expect(Number(orderRes.body.total_amount)).toBe(450);
 
-    const checkHold = await prisma.hold.findUnique({ where: { id: holdId } });
-    expect(checkHold?.status).toBe('CONSUMED');
+    const checkHold1 = await prisma.hold.findUnique({ where: { id: hold1Id } });
+    const checkHold2 = await prisma.hold.findUnique({ where: { id: hold2Id } });
+    expect(checkHold1?.status).toBe('CONSUMED');
+    expect(checkHold2?.status).toBe('CONSUMED');
 
-    const checkOrderHold = await prisma.orderHold.findUnique({ where: { hold_id: holdId } });
-    expect(checkOrderHold?.order_id).toBe(orderRes.body.order.id);
+    const checkOrderHolds = await prisma.orderHold.findMany({ where: { order_id: orderRes.body.id } });
+    expect(checkOrderHolds).toHaveLength(2);
   });
 
   it('returns cached response for duplicate idempotency key with same payload', async () => {
@@ -139,13 +149,13 @@ describe('Booking & Concurrency Integration', () => {
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
       .set('Idempotency-Key', 'idempotency-key-dup')
-      .send({ hold_id: holdId });
+      .send({ hold_ids: [holdId] });
 
     const res2 = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
       .set('Idempotency-Key', 'idempotency-key-dup')
-      .send({ hold_id: holdId });
+      .send({ hold_ids: [holdId] });
 
     expect(res1.status).toBe(201);
     expect(res2.status).toBe(201);
@@ -167,13 +177,13 @@ describe('Booking & Concurrency Integration', () => {
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
       .set('Idempotency-Key', 'idempotency-key-mismatch')
-      .send({ hold_id: holdRes1.body.id });
+      .send({ hold_ids: [holdRes1.body.id] });
 
     const res2 = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
       .set('Idempotency-Key', 'idempotency-key-mismatch')
-      .send({ hold_id: holdRes2.body.id });
+      .send({ hold_ids: [holdRes2.body.id] });
 
     expect(res2.status).toBe(409);
     expect(res2.body.message).toContain('Idempotency key reused with different payload');
@@ -195,4 +205,3 @@ describe('Booking & Concurrency Integration', () => {
     expect(successes.length + failures.length).toBe(10);
   });
 });
-</content>

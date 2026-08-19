@@ -70,12 +70,12 @@ await expectRejected('CHECK: invalid status_code rejected', () =>
 
 await expectRejected('CHECK: nonnegative order total rejected', () =>
   prisma.$executeRawUnsafe(
-    `INSERT INTO "Order" (user_id, total_amount, status, created_at, updated_at, expired_at) VALUES (${user.id}, -100, 'SUCCESS', NOW(), NOW(), NOW())`
+    `INSERT INTO "Order" (user_id, total_amount, status, created_at, updated_at) VALUES (${user.id}, -100, 'SUCCESS', NOW(), NOW())`
   )
 );
 
 const ohUniqueA = await prisma.order.create({
-  data: { user_id: user.id, total_amount: '20.00', status: 'SUCCESS', expired_at: new Date(Date.now() + 60000), orderHolds: { create: [] } },
+  data: { user_id: user.id, total_amount: '20.00', status: 'SUCCESS', orderHolds: { create: [] } },
 });
 
 const hold = await prisma.hold.create({
@@ -86,7 +86,6 @@ const order = await prisma.order.create({
     user_id: user.id,
     total_amount: '20.00',
     status: 'SUCCESS',
-    expired_at: new Date(Date.now() + 60000),
     orderHolds: { create: [{ hold_id: hold.id }] },
   },
   include: { orderHolds: true },
@@ -103,7 +102,6 @@ await expectRejected('OrderHold hold_id cannot be reused by another order', () =
       user_id: user.id,
       total_amount: '20.00',
       status: 'SUCCESS',
-      expired_at: new Date(Date.now() + 60000),
       orderHolds: { create: [{ hold_id: hold.id }] },
     },
   })

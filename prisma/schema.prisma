@@ -94,7 +94,6 @@ model Order {
   status       OrderStatus @default(PENDING)
   created_at   DateTime    @default(now())
   updated_at   DateTime    @updatedAt
-  expired_at   DateTime
 
   details    OrderDetail[]
   orderHolds OrderHold[]

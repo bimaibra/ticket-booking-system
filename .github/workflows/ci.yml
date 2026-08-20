@@ -44,6 +44,11 @@ jobs:
 
       - run: npm run openapi:lint
 
+      - run: npm run openapi:generate
+      # choose older v7 to avoid peer dep conflict with typescript 7
+
+      - run: git diff --exit-code types/api.ts
+
       - run: npm run test:coverage
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/ticket_booking_test?schema=public

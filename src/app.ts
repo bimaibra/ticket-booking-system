@@ -1,8 +1,10 @@
 import express from 'express';
-import type { Express } from 'express';
+import type { Express, Request, Response, NextFunction } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import crypto from 'node:crypto';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { env } from './config/env.js';
 import { AppError } from './utils/errors.js';
@@ -12,6 +14,8 @@ import { createTicketsRouter } from './routes/tickets.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createHoldsRouter } from './routes/holds.js';
 import { createOrdersRouter } from './routes/orders.js';
+import { logger } from './lib/logger.js';
+import { getMetricsSnapshot } from './lib/metrics.js';
 
 export interface AppDependencies {
   prisma: PrismaClient;
@@ -37,11 +41,44 @@ export function createApp(deps: AppDependencies, _options?: CreateAppOptions): E
 
   app.use(express.json());
 
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const requestId = (req.headers['x-request-id'] as string) || crypto.randomUUID();
+    (req as any).id = requestId;
+    res.setHeader('x-request-id', requestId);
+    const childLogger = logger.child({ request_id: requestId });
+    (req as any).log = childLogger;
+    const start = Date.now();
+    res.on('finish', () => {
+      childLogger.info(
+        {
+          method: req.method,
+          url: req.originalUrl,
+          status: res.statusCode,
+          duration_ms: Date.now() - start,
+        },
+        'request completed',
+      );
+    });
+    next();
+  });
+
+  const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: env.AUTH_RATE_LIMIT_MAX,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: 'Too many authentication attempts', code: 'RATE_LIMIT_EXCEEDED' },
+  });
+
+  app.use('/auth/login', authLimiter);
+  app.use('/auth/register', authLimiter);
+  app.use('/auth/refresh', authLimiter);
+
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiDocument));
 
   app.use('/auth', createAuthRouter(deps.prisma));
   app.use('/events', createEventsRouter(deps.prisma));
-  app.use(createTicketsRouter(deps.prisma));
+  app.use('/events', createTicketsRouter(deps.prisma));
   app.use('/admin', createAdminRouter(deps.prisma));
   app.use('/', createOrdersRouter(deps.prisma));
   app.use('/', createHoldsRouter(deps.prisma));
@@ -50,8 +87,23 @@ export function createApp(deps: AppDependencies, _options?: CreateAppOptions): E
     res.status(200).json({ status: 'ok' });
   });
 
-  app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  app.get('/ready', async (_req, res) => {
+    try {
+      await deps.prisma.$queryRawUnsafe('SELECT 1');
+      res.status(200).json({ status: 'ready' });
+    } catch {
+      res.status(503).json({ status: 'unavailable' });
+    }
+  });
+
+  app.get('/metrics', (_req, res) => {
+    res.set('Content-Type', 'text/plain; version=0.0.4');
+    res.send(getMetricsSnapshot());
+  });
+
+  app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
     if (error instanceof AppError) {
+      (req as any).log?.warn({ err: error, code: error.code }, error.message);
       res.status(error.statusCode).json({
         message: error.message,
         code: error.code,
@@ -64,7 +116,7 @@ export function createApp(deps: AppDependencies, _options?: CreateAppOptions): E
       return;
     }
 
-    console.error(error);
+    (req as any).log?.error({ err: error }, 'Unhandled error');
     res.status(500).json({ message: 'Internal Server Error' });
   });
 

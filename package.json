@@ -12,6 +12,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "tsc --noEmit",
     "openapi:lint": "spectral lint openapi.yaml --ruleset .spectral.yaml",
+    "openapi:generate": "npx openapi-typescript@7.6.1 openapi.yaml -o types/api.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",

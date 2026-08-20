@@ -10,6 +10,7 @@ import {
   HistoryRetainedError,
 } from '../utils/errors.js';
 import { withTransactionRetry } from '../utils/transaction.js';
+import { getTicketAvailability } from '../services/availability.js';
 
 const createTicketSchema = z.object({
   name: z.string().min(1).max(200),
@@ -55,7 +56,7 @@ function buildTicketUpdate(
 export function createTicketsRouter(prisma: PrismaClient): Router {
   const router = Router();
 
-  router.get('/events/:eventId/tickets', async (req: Request, res: Response) => {
+  router.get('/:eventId/tickets', async (req: Request, res: Response) => {
     const eventId = Number.parseInt(req.params.eventId as string, 10);
     if (Number.isNaN(eventId)) {
       throw new ValidationError('Invalid event ID');
@@ -66,15 +67,32 @@ export function createTicketsRouter(prisma: PrismaClient): Router {
       throw new NotFoundError('Event');
     }
 
+    const availability = await getTicketAvailability(prisma, eventId);
     const tickets = await prisma.ticket.findMany({
       where: { event_id: eventId },
       orderBy: { id: 'asc' },
     });
 
-    res.json(tickets);
+    const availMap = new Map(availability.map((a) => [a.ticket_id, a]));
+    const result = tickets.map((t) => {
+      const a = availMap.get(t.id);
+      return {
+        id: t.id,
+        event_id: t.event_id,
+        name: t.name,
+        total_quota: t.total_quota,
+        available_quota: a ? a.available_quota : t.total_quota,
+        price: t.price.toString(),
+        last_updated: a ? a.last_updated.toISOString() : new Date().toISOString(),
+        created_at: t.created_at,
+        updated_at: t.updated_at,
+      };
+    });
+
+    res.json(result);
   });
 
-  router.post('/events/:eventId/tickets', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  router.post('/:eventId/tickets', authenticate, requireAdmin, async (req: Request, res: Response) => {
     const eventId = Number.parseInt(req.params.eventId as string, 10);
     if (Number.isNaN(eventId)) {
       throw new ValidationError('Invalid event ID');
@@ -102,7 +120,7 @@ export function createTicketsRouter(prisma: PrismaClient): Router {
     res.status(201).json(ticket);
   });
 
-  router.put('/events/:eventId/tickets/:ticketId', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  router.put('/:eventId/tickets/:ticketId', authenticate, requireAdmin, async (req: Request, res: Response) => {
     const eventId = Number.parseInt(req.params.eventId as string, 10);
     const ticketId = Number.parseInt(req.params.ticketId as string, 10);
     if (Number.isNaN(eventId) || Number.isNaN(ticketId)) {
@@ -170,7 +188,7 @@ export function createTicketsRouter(prisma: PrismaClient): Router {
     res.json(updated);
   });
 
-  router.patch('/events/:eventId/tickets/:ticketId', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  router.patch('/:eventId/tickets/:ticketId', authenticate, requireAdmin, async (req: Request, res: Response) => {
     const eventId = Number.parseInt(req.params.eventId as string, 10);
     const ticketId = Number.parseInt(req.params.ticketId as string, 10);
     if (Number.isNaN(eventId) || Number.isNaN(ticketId)) {
@@ -238,7 +256,7 @@ export function createTicketsRouter(prisma: PrismaClient): Router {
     res.json(updated);
   });
 
-  router.delete('/events/:eventId/tickets/:ticketId', authenticate, requireAdmin, async (req: Request, res: Response) => {
+  router.delete('/:eventId/tickets/:ticketId', authenticate, requireAdmin, async (req: Request, res: Response) => {
     const eventId = Number.parseInt(req.params.eventId as string, 10);
     const ticketId = Number.parseInt(req.params.ticketId as string, 10);
     if (Number.isNaN(eventId) || Number.isNaN(ticketId)) {

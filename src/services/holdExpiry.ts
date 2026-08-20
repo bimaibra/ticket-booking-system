@@ -1,7 +1,12 @@
 import type { PrismaClient } from '../generated/prisma/client.js';
 
+async function dbNow(prisma: PrismaClient): Promise<Date> {
+  const rows = await prisma.$queryRawUnsafe<Array<{ t: Date }>>(`SELECT clock_timestamp() AS t`);
+  return rows[0]?.t ? new Date(rows[0].t) : new Date();
+}
+
 export async function releaseExpiredHolds(prisma: PrismaClient): Promise<number> {
-  const now = new Date();
+  const now = await dbNow(prisma);
 
   const result = await prisma.hold.updateMany({
     where: {
@@ -19,7 +24,7 @@ export async function releaseExpiredHolds(prisma: PrismaClient): Promise<number>
 }
 
 export async function cleanupExpiredIdempotencyRecords(prisma: PrismaClient): Promise<number> {
-  const now = new Date();
+  const now = await dbNow(prisma);
 
   const result = await prisma.idempotencyRecord.deleteMany({
     where: {
@@ -31,4 +36,3 @@ export async function cleanupExpiredIdempotencyRecords(prisma: PrismaClient): Pr
 
   return result.count;
 }
-

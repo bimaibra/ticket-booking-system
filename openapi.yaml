@@ -166,6 +166,9 @@ components:
           type: integer
         price:
           type: string
+        last_updated:
+          type: string
+          format: date-time
         created_at:
           type: string
           format: date-time
@@ -235,8 +238,6 @@ components:
           type: integer
         ticket_id:
           type: integer
-        order_id:
-          type: integer
         quantity:
           type: integer
         expires_at:
@@ -299,11 +300,6 @@ components:
         updated_at:
           type: string
           format: date-time
-        expired_at:
-          type: string
-          format: date-time
-        idempotency_key:
-          type: string
         details:
           type: array
           items:
@@ -311,10 +307,14 @@ components:
     CreateOrderRequest:
       type: object
       required:
-        - hold_id
+        - hold_ids
       properties:
-        hold_id:
-          type: integer
+        hold_ids:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          maxItems: 100
     AdminUserUpdateRequest:
       type: object
       required:
@@ -598,6 +598,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Cannot delete event with existing history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       tags:
         - Events & Tickets
       description: Delete an event by ID (Admin only)
@@ -786,12 +792,6 @@ paths:
       responses:
         '204':
           description: Ticket deleted successfully
-        '400':
-          description: Cannot delete ticket with active orders/holds
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Forbidden
           content:
@@ -800,6 +800,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Cannot delete ticket with existing history
           content:
             application/json:
               schema:
@@ -891,9 +897,11 @@ paths:
         - name: Idempotency-Key
           in: header
           required: true
-          description: Unique key to prevent double booking
+          description: Unique UUID v4 key to prevent double booking
           schema:
             type: string
+            format: uuid
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
       requestBody:
         required: true
         content:
@@ -931,6 +939,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: One or more holds have expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
       tags:
         - Orders
       description: Create an order from an active hold
@@ -955,44 +969,6 @@ paths:
       tags:
         - Orders
       description: Get user order history
-  /orders/{id}/confirm:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
-    post:
-      operationId: confirmPayment
-      summary: Confirm order payment
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Order'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      tags:
-        - Orders
-      description: Confirm order payment
   /admin/orders:
     get:
       operationId: adminGetAllOrders

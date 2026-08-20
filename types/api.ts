@@ -13,7 +13,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Register a new user */
+        /**
+         * Register a new user
+         * @description Register a new user
+         */
         post: operations["registerUser"];
         delete?: never;
         options?: never;
@@ -30,7 +33,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** User Login */
+        /**
+         * User Login
+         * @description User Login
+         */
         post: operations["loginUser"];
         delete?: never;
         options?: never;
@@ -47,7 +53,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Refresh access token */
+        /**
+         * Refresh access token
+         * @description Refresh access token
+         */
         post: operations["refreshToken"];
         delete?: never;
         options?: never;
@@ -64,7 +73,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Logout user and invalidate refresh token */
+        /**
+         * Logout user and invalidate refresh token
+         * @description Logout user and invalidate refresh token
+         */
         post: operations["logoutUser"];
         delete?: never;
         options?: never;
@@ -79,10 +91,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all events */
+        /**
+         * Get all events
+         * @description Get all events
+         */
         get: operations["getEvents"];
         put?: never;
-        /** Create a new event (Admin only) */
+        /**
+         * Create a new event (Admin only)
+         * @description Create a new event (Admin only)
+         */
         post: operations["createEvent"];
         delete?: never;
         options?: never;
@@ -99,16 +117,28 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get event detail by ID */
+        /**
+         * Get event detail by ID
+         * @description Get event detail by ID
+         */
         get: operations["getEventById"];
-        /** Update an event by ID (Admin only) */
+        /**
+         * Update an event by ID (Admin only)
+         * @description Update an event by ID (Admin only)
+         */
         put: operations["updateEventById"];
         post?: never;
-        /** Delete an event by ID (Admin only) */
+        /**
+         * Delete an event by ID (Admin only)
+         * @description Delete an event by ID (Admin only)
+         */
         delete: operations["deleteEventById"];
         options?: never;
         head?: never;
-        /** Partially update an event by ID (Admin only) */
+        /**
+         * Partially update an event by ID (Admin only)
+         * @description Partially update an event by ID (Admin only)
+         */
         patch: operations["patchEventById"];
         trace?: never;
     };
@@ -121,7 +151,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get computed availability for event tickets */
+        /**
+         * Get computed availability for event tickets
+         * @description Get computed availability for event tickets
+         */
         get: operations["getEventAvailability"];
         put?: never;
         post?: never;
@@ -140,10 +173,16 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Get all tickets for a specific event */
+        /**
+         * Get all tickets for a specific event
+         * @description Get all tickets for a specific event
+         */
         get: operations["getTickets"];
         put?: never;
-        /** Create a new ticket for an event (Admin only) */
+        /**
+         * Create a new ticket for an event (Admin only)
+         * @description Create a new ticket for an event (Admin only)
+         */
         post: operations["createTicket"];
         delete?: never;
         options?: never;
@@ -162,14 +201,23 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Update ticket details (Admin only) */
+        /**
+         * Update ticket details (Admin only)
+         * @description Update ticket details (Admin only)
+         */
         put: operations["updateTicket"];
         post?: never;
-        /** Delete ticket (Admin only) */
+        /**
+         * Delete ticket (Admin only)
+         * @description Delete ticket (Admin only)
+         */
         delete: operations["deleteTicket"];
         options?: never;
         head?: never;
-        /** Partially update ticket details (Admin only) */
+        /**
+         * Partially update ticket details (Admin only)
+         * @description Partially update ticket details (Admin only)
+         */
         patch: operations["patchTicket"];
         trace?: never;
     };
@@ -182,7 +230,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Place temporary hold on tickets */
+        /**
+         * Place temporary hold on tickets
+         * @description Place temporary hold on tickets
+         */
         post: operations["createHold"];
         delete?: never;
         options?: never;
@@ -202,7 +253,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Cancel an active hold owned by user */
+        /**
+         * Cancel an active hold owned by user
+         * @description Cancel an active hold owned by user
+         */
         delete: operations["cancelHold"];
         options?: never;
         head?: never;
@@ -216,30 +270,17 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get user order history */
+        /**
+         * Get user order history
+         * @description Get user order history
+         */
         get: operations["getOrderHistory"];
         put?: never;
-        /** Create an order from an active hold */
+        /**
+         * Create an order from an active hold
+         * @description Create an order from an active hold
+         */
         post: operations["createOrder"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/orders/{id}/confirm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Confirm order payment */
-        post: operations["confirmPayment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -253,7 +294,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all orders across all users (Admin only) */
+        /**
+         * List all orders across all users (Admin only)
+         * @description List all orders across all users (Admin only)
+         */
         get: operations["adminGetAllOrders"];
         put?: never;
         post?: never;
@@ -270,7 +314,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List all system users (Admin only) */
+        /**
+         * List all system users (Admin only)
+         * @description List all system users (Admin only)
+         */
         get: operations["adminGetAllUsers"];
         put?: never;
         post?: never;
@@ -295,7 +342,10 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Update user role (Admin only) */
+        /**
+         * Update user role (Admin only)
+         * @description Update user role (Admin only)
+         */
         patch: operations["adminUpdateUserRole"];
         trace?: never;
     };
@@ -376,6 +426,8 @@ export interface components {
             total_quota?: number;
             price?: string;
             /** Format: date-time */
+            last_updated?: string;
+            /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
@@ -409,7 +461,6 @@ export interface components {
             id?: number;
             user_id?: number;
             ticket_id?: number;
-            order_id?: number;
             quantity?: number;
             /** Format: date-time */
             expires_at?: string;
@@ -443,13 +494,10 @@ export interface components {
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
-            /** Format: date-time */
-            expired_at?: string;
-            idempotency_key?: string;
             details?: components["schemas"]["OrderDetail"][];
         };
         CreateOrderRequest: {
-            hold_id: number;
+            hold_ids: number[];
         };
         AdminUserUpdateRequest: {
             role: components["schemas"]["Role"];
@@ -780,6 +828,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Cannot delete event with existing history */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     patchEventById: {
@@ -1023,15 +1080,6 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Cannot delete ticket with active orders/holds */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Forbidden */
             403: {
                 headers: {
@@ -1043,6 +1091,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cannot delete ticket with existing history */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1239,7 +1296,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Unique key to prevent double booking */
+                /** @description Unique UUID v4 key to prevent double booking */
                 "Idempotency-Key": string;
             };
             path?: never;
@@ -1296,48 +1353,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-        };
-    };
-    confirmPayment: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Success */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Order"];
-                };
-            };
-            /** @description Bad Request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Not Found */
-            404: {
+            /** @description One or more holds have expired */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -253,27 +253,27 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 **Goal:** Coordinate retries before booking side effects and support configured key expiry.
 
-- [ ] Validate `Idempotency-Key` as UUID v4 in Zod and OpenAPI.
-- [ ] Canonicalize the validated `hold_ids` array before hashing so semantically identical requests have the same hash.
-- [ ] Use `env.IDEMPOTENCY_TTL_SECONDS` and `clock_timestamp()` to set expiry at completion.
-- [ ] At transaction start, conditionally delete an expired record for the same key/scope and insert a PENDING claim containing owner, versioned scope, canonical hash, and provisional expiry.
-- [ ] Complete the booking and update that claim to COMPLETED with final expiry, exact status code, and the once-serialized public response bytes before commit.
-- [ ] Catch a `(key, scope)` unique conflict outside the aborted claim transaction, read the committed winning record, and apply these rules:
+- [x] Validate `Idempotency-Key` as UUID v4 in Zod and OpenAPI.
+- [x] Canonicalize the validated `hold_ids` array before hashing so semantically identical requests have the same hash.
+- [x] Use `env.IDEMPOTENCY_TTL_SECONDS` and `clock_timestamp()` to set expiry at completion.
+- [x] At transaction start, conditionally delete an expired record for the same key/scope and insert a PENDING claim containing owner, versioned scope, canonical hash, and provisional expiry.
+- [x] Complete the booking and update that claim to COMPLETED with final expiry, exact status code, and the once-serialized public response bytes before commit.
+- [x] Catch a `(key, scope)` unique conflict outside the aborted claim transaction, read the committed winning record, and apply these rules:
   - Matching owner/hash and COMPLETED: return the cached status and body.
   - Different owner or hash: return `409 Conflict`.
   - Matching but PENDING: return `409 IDEMPOTENCY_IN_PROGRESS` with `Retry-After: 1`; this is limited to committed recovery states when claim and work share one transaction.
   - Expired: remove/reclaim it safely and process as new.
-- [ ] Cache exactly `201 ORDER_CREATED` and committed caller-owned `410 HOLD_EXPIRED`; do not consume the key for other outcomes.
-- [ ] Validate cached status/body integrity and fail closed without re-executing booking when a COMPLETED record is corrupt.
-- [ ] Ensure unexpected transaction failure rolls back the PENDING claim and permits retry.
-- [ ] Update cleanup so it deletes only expired records and cannot interfere with an uncommitted booking transaction.
+- [x] Cache exactly `201 ORDER_CREATED` and committed caller-owned `410 HOLD_EXPIRED`; do not consume the key for other outcomes.
+- [x] Validate cached status/body integrity and fail closed without re-executing booking when a COMPLETED record is corrupt.
+- [x] Ensure unexpected transaction failure rolls back the PENDING claim and permits retry.
+- [x] Update cleanup so it deletes only expired records and cannot interfere with an uncommitted booking transaction.
 
 #### Idempotency tests
 
-- [ ] Run simultaneous same-key/same-payload requests; assert identical responses and one order.
-- [ ] Run simultaneous same-key/different-payload and different-owner requests; assert one winner and deterministic conflicts.
-- [ ] Reuse a key after expiry; assert a new operation succeeds without an order-level uniqueness error.
-- [ ] Retry after an injected rollback; assert no stranded claim and exactly one eventual order.
+- [x] Run simultaneous same-key/same-payload requests; assert identical responses and one order.
+- [x] Run simultaneous same-key/different-payload and different-owner requests; assert one winner and deterministic conflicts.
+- [x] Reuse a key after expiry; assert a new operation succeeds without an order-level uniqueness error.
+- [x] Retry after an injected rollback; assert no stranded claim and exactly one eventual order.
 
 **Exit evidence:** All retry race tests pass repeatedly against PostgreSQL with one booking side effect per unexpired key.
 
@@ -281,14 +281,14 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 **Goal:** Make every documented operation reachable at the documented path with the documented body and status.
 
-- [ ] Mount `ticketsRouter` once so runtime paths are `/events/{eventId}/tickets` and `/events/{eventId}/tickets/{ticketId}`.
-- [ ] Put route registration in `createApp` so production and tests cannot drift.
-- [ ] Return `available_quota` and `last_updated` from ticket listing through the shared availability service.
-- [ ] Update order request/response schemas for `hold_ids`, UUID v4 idempotency, multi-detail orders, and the selected bare response shape.
-- [ ] Add a `GoneError` or equivalent 410 mapping and document all inventory/idempotency conflict bodies.
-- [ ] Implement the approved event-deletion conflict behavior.
-- [ ] Generate API types from the final OpenAPI document and fail CI on generated diff.
-- [ ] Add contract tests for every OpenAPI method/path, including authorization and representative response-schema validation.
+- [x] Mount `ticketsRouter` once so runtime paths are `/events/{eventId}/tickets` and `/events/{eventId}/tickets/{ticketId}`.
+- [x] Put route registration in `createApp` so production and tests cannot drift.
+- [x] Return `available_quota` and `last_updated` from ticket listing through the shared availability service.
+- [x] Update order request/response schemas for `hold_ids`, UUID v4 idempotency, multi-detail orders, and the selected bare response shape.
+- [x] Add a `GoneError` or equivalent 410 mapping and document all inventory/idempotency conflict bodies.
+- [x] Implement the approved event-deletion conflict behavior.
+- [x] Generate API types from the final OpenAPI document and fail CI on generated diff.
+- [x] Add contract tests for every OpenAPI method/path, including authorization and representative response-schema validation.
 
 **Exit evidence:** Spectral passes; generated types are current; Supertest reaches the literal OpenAPI paths and validates status/body contracts.
 
@@ -298,31 +298,31 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 #### Security
 
-- [ ] Mount a login limiter configured for at most five attempts per minute per IP. Use separate, documented limits for register and refresh if needed.
-- [ ] Validate numeric environment values and safe ranges during startup instead of parsing unchecked strings at use sites.
-- [ ] Permit predictable seed users only when `NODE_ENV=development` and an explicit seed flag is enabled; otherwise require credentials from environment or generate one-time secrets without logging passwords in shared environments.
-- [ ] Add tests for limiter behavior, CORS production allowlist, malformed input, authorization, and secret redaction.
+- [x] Mount a login limiter configured for at most five attempts per minute per IP. Use separate, documented limits for register and refresh if needed.
+- [x] Validate numeric environment values and safe ranges during startup instead of parsing unchecked strings at use sites.
+- [x] Permit predictable seed users only when `NODE_ENV=development` and an explicit seed flag is enabled; otherwise require credentials from environment or generate one-time secrets without logging passwords in shared environments.
+- [x] Add tests for limiter behavior, CORS production allowlist, malformed input, authorization, and secret redaction.
 
 #### Observability
 
-- [ ] Add Pino request logging with generated/propagated request IDs and child logger context.
-- [ ] Replace `console.*` calls with structured logs that exclude credentials, tokens, idempotency payloads, and personal data.
-- [ ] Add counters/histograms for hold outcomes, booking outcomes, expiry count, idempotency outcomes, request duration, and database errors.
-- [ ] Expose `/health` for liveness and `/ready` for a bounded database readiness query. Protect or constrain the metrics endpoint as appropriate.
+- [x] Add Pino request logging with generated/propagated request IDs and child logger context.
+- [x] Replace `console.*` calls with structured logs that exclude credentials, tokens, idempotency payloads, and personal data.
+- [x] Add counters/histograms for hold outcomes, booking outcomes, expiry count, idempotency outcomes, request duration, and database errors.
+- [x] Expose `/health` for liveness and `/ready` for a bounded database readiness query. Protect or constrain the metrics endpoint as appropriate.
 
 #### Process and scheduler
 
-- [ ] Retain the cron schedule at 30 seconds. Each instance opens one transaction and attempts nonblocking `pg_try_advisory_xact_lock(0x5449434B4554434C)`; a false result performs no maintenance and records a normal lock miss. The key is constant across all instances sharing the database.
-- [ ] In the winning transaction, capture database time once, process expired holds in bounded `(ticket_id, id)` batches, then delete expired idempotency records through the same transaction client. The combined cycle is atomic, has a deadline below 25 seconds, and releases ownership automatically on commit, rollback, or connection loss.
-- [ ] Log scheduler duration, release count, cleanup count, lock miss, and errors.
-- [ ] Handle SIGTERM/SIGINT: stop accepting traffic, stop cron scheduling, drain the HTTP server, disconnect Prisma, and exit within a configured timeout.
-- [ ] Add startup failure and graceful-shutdown tests.
+- [x] Retain the cron schedule at 30 seconds. Each instance opens one transaction and attempts nonblocking `pg_try_advisory_xact_lock(0x5449434B4554434C)`; a false result performs no maintenance and records a normal lock miss. The key is constant across all instances sharing the database.
+- [x] In the winning transaction, capture database time once, process expired holds in bounded `(ticket_id, id)` batches, then delete expired idempotency records through the same transaction client. The combined cycle is atomic, has a deadline below 25 seconds, and releases ownership automatically on commit, rollback, or connection loss.
+- [x] Log scheduler duration, release count, cleanup count, lock miss, and errors.
+- [x] Handle SIGTERM/SIGINT: stop accepting traffic, stop cron scheduling, drain the HTTP server, disconnect Prisma, and exit within a configured timeout.
+- [x] Add startup failure and graceful-shutdown tests.
 
 #### Deployment
 
-- [ ] Add a production multi-stage Dockerfile with a non-root runtime user and health check.
-- [ ] Add a local service definition for API plus PostgreSQL and document required production environment variables.
-- [ ] Document migration-before-start, rollback, backup/restore, scheduler ownership, and readiness semantics.
+- [x] Add a production multi-stage Dockerfile with a non-root runtime user and health check.
+- [x] Add a local service definition for API plus PostgreSQL and document required production environment variables.
+- [x] Document migration-before-start, rollback, backup/restore, scheduler ownership, and readiness semantics.
 
 **Exit evidence:** Container smoke test applies migrations, starts the compiled app, passes liveness/readiness, emits structured correlated logs/metrics, and shuts down cleanly.
 

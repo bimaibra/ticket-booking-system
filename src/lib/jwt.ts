@@ -58,7 +58,7 @@ export function signAccessToken(payload: Omit<AccessTokenPayload, 'type'>): stri
     env.JWT_ACCESS_SECRET,
     {
       algorithm: ACCESS_ALGORITHM,
-      expiresIn: Number.parseInt(env.JWT_ACCESS_EXPIRY, 10),
+      expiresIn: env.JWT_ACCESS_EXPIRY,
       issuer: ISSUER,
       audience: AUDIENCE,
       keyid: PRIMARY_KID,
@@ -72,7 +72,7 @@ export function signRefreshToken(payload: Omit<RefreshTokenPayload, 'type'>): st
     env.JWT_REFRESH_SECRET,
     {
       algorithm: REFRESH_ALGORITHM,
-      expiresIn: Number.parseInt(env.JWT_REFRESH_EXPIRY, 10),
+      expiresIn: env.JWT_REFRESH_EXPIRY,
       issuer: ISSUER,
       audience: AUDIENCE,
       keyid: PRIMARY_KID,

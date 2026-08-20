@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ticket_user
+      POSTGRES_PASSWORD: ticket_pass
+      POSTGRES_DB: ticket_booking
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticket_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://ticket_user:ticket_pass@postgres:5432/ticket_booking?schema=public
+      JWT_ACCESS_SECRET: dev-access-secret-that-is-at-least-32-chars!
+      JWT_REFRESH_SECRET: dev-refresh-secret-that-is-at-least-32-chars!
+      NODE_ENV: production
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+
+volumes:
+  pgdata:

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { env } from '../config/env.js';
 import { hashPassword, comparePassword } from '../lib/hash.js';
@@ -26,6 +27,14 @@ const refreshSchema = z.object({
 
 export function createAuthRouter(prisma: PrismaClient): Router {
   const router = Router();
+
+  const authLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: env.AUTH_RATE_LIMIT_MAX,
+    message: { message: 'Too many authentication attempts, please try again later', code: 'RATE_LIMITED' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
   router.post('/register', async (req: Request, res: Response) => {
     const parsed = registerSchema.safeParse(req.body);
@@ -98,7 +107,7 @@ export function createAuthRouter(prisma: PrismaClient): Router {
 
     const refreshToken = signRefreshToken({ sub: user.id });
 
-    const refreshHash = await bcrypt.hash(refreshToken, Number.parseInt(env.BCRYPT_ROUNDS, 10));
+    const refreshHash = await bcrypt.hash(refreshToken, env.BCRYPT_ROUNDS);
     await prisma.user.update({
       where: { id: user.id },
       data: { refresh_token: refreshHash },
@@ -155,7 +164,7 @@ export function createAuthRouter(prisma: PrismaClient): Router {
 
     const newRefreshToken = signRefreshToken({ sub: user.id });
 
-    const newRefreshHash = await bcrypt.hash(newRefreshToken, Number.parseInt(env.BCRYPT_ROUNDS, 10));
+    const newRefreshHash = await bcrypt.hash(newRefreshToken, env.BCRYPT_ROUNDS);
     await prisma.user.update({
       where: { id: user.id },
       data: { refresh_token: newRefreshHash },

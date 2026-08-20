@@ -3,8 +3,13 @@ import request from 'supertest';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { startTestDatabase, stopTestDatabase, cleanDatabase, type TestDatabase } from '../db.js';
 import { createTestApp } from '../helpers.js';
+import { randomUUID } from 'node:crypto';
 import { hashPassword } from '../../src/lib/hash.js';
 import { signAccessToken } from '../../src/lib/jwt.js';
+
+function uuid(): string {
+  return randomUUID();
+}
 
 describe('Booking & Concurrency Integration', () => {
   let db: TestDatabase;
@@ -119,7 +124,7 @@ describe('Booking & Concurrency Integration', () => {
     const orderRes = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
-      .set('Idempotency-Key', 'unique-key-101')
+      .set('Idempotency-Key', uuid())
       .send({ hold_ids: [hold1Id, hold2Id] });
 
     expect(orderRes.status).toBe(201);
@@ -144,17 +149,18 @@ describe('Booking & Concurrency Integration', () => {
       .send({ ticket_id: ticketId, quantity: 1 });
 
     const holdId = holdRes.body.id;
+    const key = uuid();
 
     const res1 = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
-      .set('Idempotency-Key', 'idempotency-key-dup')
+      .set('Idempotency-Key', key)
       .send({ hold_ids: [holdId] });
 
     const res2 = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
-      .set('Idempotency-Key', 'idempotency-key-dup')
+      .set('Idempotency-Key', key)
       .send({ hold_ids: [holdId] });
 
     expect(res1.status).toBe(201);
@@ -173,16 +179,18 @@ describe('Booking & Concurrency Integration', () => {
       .set('Authorization', `Bearer ${userToken}`)
       .send({ ticket_id: ticketId, quantity: 1 });
 
+    const key = uuid();
+
     await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
-      .set('Idempotency-Key', 'idempotency-key-mismatch')
+      .set('Idempotency-Key', key)
       .send({ hold_ids: [holdRes1.body.id] });
 
     const res2 = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
-      .set('Idempotency-Key', 'idempotency-key-mismatch')
+      .set('Idempotency-Key', key)
       .send({ hold_ids: [holdRes2.body.id] });
 
     expect(res2.status).toBe(409);

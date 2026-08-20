@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockPrisma = {
+  $queryRawUnsafe: vi.fn().mockResolvedValue([{ t: new Date('2026-08-19T00:00:00.000Z') }]),
   ticket: {
     findMany: vi.fn(),
   },

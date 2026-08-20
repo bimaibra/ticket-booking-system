@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../src/config/env.js', () => ({
   env: {
-    BCRYPT_ROUNDS: '12',
+    BCRYPT_ROUNDS: 12,
     JWT_ACCESS_SECRET: 'supersecretaccesskeythatisatleast32charslong!',
     JWT_ACCESS_SECRET_FALLBACKS: '',
     JWT_REFRESH_SECRET: 'supersecretrefreshkeythatisatleast32charslong!',
     JWT_REFRESH_SECRET_FALLBACKS: '',
-    JWT_ACCESS_EXPIRY: '900',
-    JWT_REFRESH_EXPIRY: '604800',
+    JWT_ACCESS_EXPIRY: 900,
+    JWT_REFRESH_EXPIRY: 604800,
   },
 }));
 

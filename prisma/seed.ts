@@ -10,7 +10,13 @@ const prisma = new PrismaClient({ adapter });
 const DEFAULT_BCRYPT_ROUNDS = 12;
 
 async function main(): Promise<void> {
-  const rounds = Number.parseInt(env.BCRYPT_ROUNDS, 10) || DEFAULT_BCRYPT_ROUNDS;
+  if (env.NODE_ENV !== 'development' || env.SEED_ENABLED !== 'true') {
+    // eslint-disable-next-line no-console
+    console.warn('Seeding is only allowed when NODE_ENV=development and SEED_ENABLED=true');
+    return;
+  }
+
+  const rounds = env.BCRYPT_ROUNDS;
   const hashedAdminPassword = await bcrypt.hash('admin123', rounds);
 
   const admin = await prisma.user.upsert({

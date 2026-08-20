@@ -1,38 +1,75 @@
 import 'dotenv/config';
 import cron from 'node-cron';
+import type { Server } from 'node:http';
 import { env } from './config/env.js';
 import { prisma, disconnectPrisma } from './lib/prisma.js';
 import { createApp } from './app.js';
 import { releaseExpiredHolds, cleanupExpiredIdempotencyRecords } from './services/holdExpiry.js';
+import { logger } from './lib/logger.js';
+import { createGracefulShutdown } from './lib/shutdown.js';
 
 const app = createApp({ prisma });
-const PORT = Number.parseInt(env.PORT, 10);
+const PORT = env.PORT;
 
-cron.schedule('*/30 * * * * *', async () => {
+const ADVISORY_LOCK_KEY = '8372648172948102938';
+
+let isShuttingDown = false;
+let cronTask: cron.ScheduledTask | null = null;
+let server: Server | null = null;
+
+cronTask = cron.schedule('*/30 * * * * *', async () => {
+  if (isShuttingDown) return;
+  const startTime = Date.now();
+
   try {
-    const released = await releaseExpiredHolds(prisma);
-    if (released > 0) {
-      console.log(`Released ${released} expired holds`);
-    }
-    const cleaned = await cleanupExpiredIdempotencyRecords(prisma);
-    if (cleaned > 0) {
-      console.log(`Cleaned ${cleaned} expired idempotency records`);
-    }
+    await prisma.$transaction(
+      async (tx) => {
+        const lockRows = await tx.$queryRawUnsafe<Array<{ locked: boolean }>>(
+          `SELECT pg_try_advisory_xact_lock(hashtext($1)) AS locked`,
+          ADVISORY_LOCK_KEY,
+        );
+
+        if (!lockRows[0]?.locked) {
+          logger.debug({ event: 'scheduler_lock_miss' }, 'Advisory lock skipped by concurrent instance');
+          return;
+        }
+
+        const released = await releaseExpiredHolds(tx as any);
+        const cleaned = await cleanupExpiredIdempotencyRecords(tx as any);
+
+        logger.info(
+          {
+            event: 'scheduler_cycle_completed',
+            duration_ms: Date.now() - startTime,
+            released_holds: released,
+            cleaned_idempotency: cleaned,
+          },
+          'Scheduler cycle executed cleanly with advisory lock',
+        );
+      },
+      { timeout: 25000, maxWait: 5000 },
+    );
   } catch (err) {
-    console.error('Expiry cron error:', err);
+    logger.error({ err, duration_ms: Date.now() - startTime }, 'Expiry cron error');
   }
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Server berjalan di http://localhost:${PORT}`);
-  console.log(`Dokumentasi API dapat diakses di http://localhost:${PORT}/docs`);
+server = app.listen(PORT, () => {
+  logger.info({ port: PORT }, `Server running at http://localhost:${PORT}`);
 });
 
-async function shutdown(): Promise<void> {
-  server.close();
-  await disconnectPrisma();
-  process.exit(0);
-}
+const handleShutdown = createGracefulShutdown({
+  server,
+  stopScheduler: () => {
+    isShuttingDown = true;
+    cronTask?.stop();
+  },
+  disconnect: disconnectPrisma,
+});
 
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+process.on('SIGTERM', () => {
+  handleShutdown('SIGTERM').then(() => process.exit(0)).catch(() => process.exit(1));
+});
+process.on('SIGINT', () => {
+  handleShutdown('SIGINT').then(() => process.exit(0)).catch(() => process.exit(1));
+});

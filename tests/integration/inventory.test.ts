@@ -3,6 +3,7 @@ import request from 'supertest';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { startTestDatabase, stopTestDatabase, cleanDatabase, type TestDatabase } from '../db.js';
 import { createTestApp, dbFutureTime } from '../helpers.js';
+import { randomUUID } from 'node:crypto';
 import { hashPassword } from '../../src/lib/hash.js';
 import { signAccessToken } from '../../src/lib/jwt.js';
 import { GoneError, TransactionRetryExhaustedError } from '../../src/utils/errors.js';
@@ -381,7 +382,7 @@ describe('Inventory Safety & Concurrency Integration (Phase 2)', () => {
         request(app)
           .post('/orders')
           .set('Authorization', `Bearer ${raceUserToken}`)
-          .set('Idempotency-Key', `race-key-${i}`)
+          .set('Idempotency-Key', randomUUID())
           .send({ hold_ids: [hold.id] }),
       ]);
 
@@ -406,7 +407,7 @@ describe('Inventory Safety & Concurrency Integration (Phase 2)', () => {
     const bookingRes = await request(app)
       .post('/orders')
       .set('Authorization', `Bearer ${userToken}`)
-      .set('Idempotency-Key', 'expired-race-key')
+      .set('Idempotency-Key', randomUUID())
       .send({ hold_ids: [hold.id] });
 
     expect([409, 410]).toContain(bookingRes.status);
@@ -488,7 +489,7 @@ describe('Inventory Safety & Concurrency Integration (Phase 2)', () => {
       request(app)
         .post('/orders')
         .set('Authorization', `Bearer ${userToken}`)
-        .set('Idempotency-Key', 'scheduler-equality-key')
+        .set('Idempotency-Key', randomUUID())
         .send({ hold_ids: [equalityHold.id] }),
       request(app)
         .delete(`/holds/${activeHold.id}`)
@@ -496,7 +497,7 @@ describe('Inventory Safety & Concurrency Integration (Phase 2)', () => {
       request(app)
         .post('/orders')
         .set('Authorization', `Bearer ${userToken}`)
-        .set('Idempotency-Key', 'scheduler-booking-key')
+        .set('Idempotency-Key', randomUUID())
         .send({ hold_ids: [activeHold.id] }),
     ]);
 

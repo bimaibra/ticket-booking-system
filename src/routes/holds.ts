@@ -6,6 +6,7 @@ import { authenticate } from '../middleware/auth.js';
 import { NotFoundError, ValidationError, ConflictError, GoneError } from '../utils/errors.js';
 import { getSingleTicketAvailability } from '../services/availability.js';
 import { env } from '../config/env.js';
+import { meterHoldOutcome } from '../lib/metrics.js';
 import { withTransactionRetry } from '../utils/transaction.js';
 
 const createHoldSchema = z.object({
@@ -13,7 +14,7 @@ const createHoldSchema = z.object({
   quantity: z.number().int().positive().default(1),
 });
 
-const HOLD_TTL_SECONDS = Number(env.HOLD_TTL_SECONDS);
+const HOLD_TTL_SECONDS = env.HOLD_TTL_SECONDS;
 
 const HOLD_EXPIRED_RESULT = Symbol('HOLD_EXPIRED');
 
@@ -46,6 +47,7 @@ export function createHoldsRouter(prisma: PrismaClient): Router {
       const ticketAvailability = await getSingleTicketAvailability(tx, ticket_id);
 
       if (ticketAvailability.available_quota < quantity) {
+        meterHoldOutcome('INSUFFICIENT_QUOTA');
         throw new ConflictError(
           `Insufficient quota for hold: requested ${quantity}, available ${ticketAvailability.available_quota}`,
         );

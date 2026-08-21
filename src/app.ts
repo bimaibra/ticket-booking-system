@@ -62,17 +62,21 @@ export function createApp(deps: AppDependencies, _options?: CreateAppOptions): E
     next();
   });
 
-  const authLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: env.AUTH_RATE_LIMIT_MAX,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { message: 'Too many authentication attempts', code: 'RATE_LIMIT_EXCEEDED' },
-  });
+  const parsedMax = Number.parseInt(process.env.AUTH_RATE_LIMIT_MAX ?? '', 10);
+  const maxAuthRequests = Number.isInteger(parsedMax) && parsedMax > 0 ? parsedMax : env.AUTH_RATE_LIMIT_MAX;
 
-  app.use('/auth/login', authLimiter);
-  app.use('/auth/register', authLimiter);
-  app.use('/auth/refresh', authLimiter);
+  const authRateLimit = (max: number) =>
+    rateLimit({
+      windowMs: 60 * 1000,
+      max,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { message: 'Too many authentication attempts', code: 'RATE_LIMIT_EXCEEDED' },
+    });
+
+  app.use('/auth/login', authRateLimit(maxAuthRequests));
+  app.use('/auth/register', authRateLimit(maxAuthRequests));
+  app.use('/auth/refresh', authRateLimit(maxAuthRequests));
 
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiDocument));
 

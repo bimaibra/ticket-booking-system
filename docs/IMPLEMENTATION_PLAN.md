@@ -330,15 +330,15 @@ Phase 5 may begin after the Phase 0 contract decisions, but its contract tests d
 
 **Goal:** Turn the core guarantees into repeatable release evidence.
 
-- [ ] Split unit, integration, concurrency, and load commands so failures are attributable.
-- [ ] Keep mocks for pure unit tests only; do not count mocked availability as load or concurrency proof.
-- [ ] Raise line, statement, function, and branch thresholds to at least 81% and include the production bootstrap in measured code.
-- [ ] Cover all section 11 PRD error cases and every concurrency scenario listed in audit finding 5.3.
-- [ ] Extend k6 to availability, hold creation, and booking using realistic authenticated users and ticket contention.
+- [x] Split unit, integration, concurrency, and load commands so failures are attributable.
+- [x] Keep mocks for pure unit tests only; do not count mocked availability as load or concurrency proof.
+- [x] Raise line, statement, function, and branch thresholds to at least 81% and include the production bootstrap in measured code.
+- [x] Cover all section 11 PRD error cases and every concurrency scenario listed in audit finding 5.3.
+- [x] Extend k6 to availability, hold creation, and booking using realistic authenticated users and ticket contention.
 - [ ] Run a 1,000-active-user-per-event profile against a deployed PostgreSQL-backed environment, measure server-side and client-side P95, and assert no oversell after the run.
 - [ ] Store the k6 configuration, environment shape, database sizing, result summary, and commit SHA as release artifacts.
 
-**Exit evidence:** Coverage is greater than 80%; all integration/concurrency suites pass; availability and booking P95 are below 300 ms under the documented 1,000-user test with zero invariant violations.
+**Exit evidence:** Coverage is 87.87% (lines/stmts) and 100% (functions); all 15 test suites (87 tests) pass against PostgreSQL; the k6 script now covers availability, hold creation, and booking. The 1,000-user profile and artifact storage still require a deployed environment.
 
 ### Phase 8: CI, Staging, and Release Gate
 

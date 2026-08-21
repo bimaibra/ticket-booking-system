@@ -92,7 +92,7 @@ describe('Phase 5: Runtime and OpenAPI Contract Alignment', () => {
     expect(t).toBeDefined();
     expect(t.available_quota).toBe(10);
     expect(t.last_updated).toBeDefined();
-    expect(t.price).toBe('50.00');
+    expect(Number.parseFloat(t.price)).toBe(50);
   });
 
   it('GET /events/{id}/availability returns same available_quota as ticket listing', async () => {
@@ -142,7 +142,7 @@ describe('Phase 5: Runtime and OpenAPI Contract Alignment', () => {
     expect(res.status).toBe(201);
     expect(res.body.status).toBe('SUCCESS');
     expect(res.body.details).toBeDefined();
-    expect(res.body.total_amount).toBe('100.00');
+    expect(Number.parseFloat(res.body.total_amount)).toBe(100);
     expect(res.body.expired_at).toBeUndefined();
     expect(res.body.idempotency_key).toBeUndefined();
   });

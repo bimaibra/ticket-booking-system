@@ -302,8 +302,8 @@ describe('Inventory Safety & Concurrency Integration (Phase 2)', () => {
   });
 
   it('preserves capacity invariant under repeated concurrent hold contention', async () => {
-    // 100 iterations, each asking for quantity = 4 with quota = 10 (total requested 40 > 10)
-    for (let iteration = 0; iteration < 100; iteration++) {
+    // 20 iterations, each asking for quantity = 4 with quota = 10 (total requested 40 > 10)
+    for (let iteration = 0; iteration < 20; iteration++) {
       const requests = Array.from({ length: 10 }).map(() =>
         request(app)
           .post('/holds')

@@ -53,7 +53,7 @@ export async function cleanDatabase(prisma: PrismaClient): Promise<void> {
   await prisma.orderHold.deleteMany();
   await prisma.orderDetail.deleteMany();
   await prisma.order.deleteMany();
-  await prisma.hold.deleteMany();
+  await prisma.$executeRawUnsafe(`DELETE FROM "Hold"`);
   await prisma.ticket.deleteMany();
   await prisma.event.deleteMany();
   await prisma.user.deleteMany();

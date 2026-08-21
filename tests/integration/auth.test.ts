@@ -13,6 +13,7 @@ describe('Auth Integration', () => {
     process.env.JWT_ACCESS_SECRET = 'test-access-secret-that-is-at-least-32-chars!';
     process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-that-is-at-least-32-chars!';
     process.env.BCRYPT_ROUNDS = '12';
+    process.env.AUTH_RATE_LIMIT_MAX = '1000';
 
     db = await startTestDatabase();
     prisma = db.prisma;

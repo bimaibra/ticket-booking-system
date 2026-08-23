@@ -2,8 +2,11 @@
 /node_modules/
 /dist/
 /coverage/
+/.nyc_output/
 /src/generated/prisma/
 *.tsbuildinfo
+/.cache/
+/.vitest/
 
 # Local environment and logs
 .env
@@ -11,10 +14,23 @@
 !.env.example
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Local tooling and operating-system files
+# IDEs, AI tooling, and operating-system files
+/.vscode/
+/.idea/
 /.claude/
 /.windsurf/
 /.opencode/
+/.gemini/
 .DS_Store
+.DS_Store?
 Thumbs.db
+ehthumbs.db
+*.swp
+*.swo
+*.tmp
+*.temp
+

@@ -1,8 +1,10 @@
 import type { NextFunction, Request, Response } from 'express';
-import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { Role } from '../generated/prisma/enums.js';
 import { verifyAccessToken } from '../lib/jwt.js';
 import { AuthenticationError, AuthorizationError } from '../utils/errors.js';
+
+const { JsonWebTokenError, TokenExpiredError } = jwt;
 
 export interface AuthenticatedUser {
   id: number;

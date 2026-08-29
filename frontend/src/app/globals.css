@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Neutral base (Zinc) */
+  --color-background: #fafafa;
+  --color-foreground: #0a0a0a;
+  --color-muted: #71717a;
+  --color-subtle: #f4f4f5;
+  --color-line: #e4e4e7;
+  --color-surface: #ffffff;
+  --color-ink: #18181b;
+
+  /* Single accent (Emerald) */
+  --color-accent: #059669;
+  --color-accent-hover: #047857;
+  --color-accent-foreground: #ffffff;
+
+  /* Status */
+  --color-danger: #b91c1c;
+  --color-warning: #b45309;
+  --color-success: #047857;
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #0a0a0a;
+    --color-foreground: #fafafa;
+    --color-muted: #a1a1aa;
+    --color-subtle: #18181b;
+    --color-line: #27272a;
+    --color-surface: #0f0f10;
+    --color-ink: #fafafa;
+    --color-accent: #10b981;
+    --color-accent-hover: #34d399;
+  }
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html,
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}

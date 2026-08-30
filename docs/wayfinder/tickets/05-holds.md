@@ -1,7 +1,7 @@
 # Ticket: Implement Hold Creation and Cancellation
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

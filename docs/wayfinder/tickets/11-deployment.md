@@ -1,7 +1,7 @@
 # Ticket: Configure Docker Deployment for VPS
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

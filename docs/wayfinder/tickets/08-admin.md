@@ -1,7 +1,7 @@
 # Ticket: Implement Admin Management UI
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

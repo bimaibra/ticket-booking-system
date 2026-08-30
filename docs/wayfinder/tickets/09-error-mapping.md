@@ -1,7 +1,7 @@
 # Ticket: Implement Global Error Contract Mapping
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

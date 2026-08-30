@@ -1,7 +1,7 @@
 # Ticket: Implement Order History and Detail
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

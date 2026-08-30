@@ -1,7 +1,7 @@
 # Ticket: Implement Booking with Idempotency Key
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

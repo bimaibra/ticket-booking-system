@@ -1,7 +1,7 @@
 # Ticket: Set Up Testing Infrastructure
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

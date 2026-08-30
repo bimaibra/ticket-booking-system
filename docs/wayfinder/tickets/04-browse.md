@@ -1,7 +1,7 @@
 # Ticket: Implement Public Event Browsing
 
 **Type:** Task
-**Status:** Open (Frontier)
+**Status:** Done
 **Label:** wayfinder:task
 
 ## Question

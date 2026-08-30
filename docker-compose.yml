@@ -1,35 +1,56 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ticket_user
-      POSTGRES_PASSWORD: ticket_pass
-      POSTGRES_DB: ticket_booking
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ticket_user"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:3001
+    depends_on:
+      - backend
+    restart: unless-stopped
 
-  api:
-    build: backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: postgresql://ticket_user:ticket_pass@postgres:5432/ticket_booking?schema=public
-      JWT_ACCESS_SECRET: dev-access-secret-that-is-at-least-32-chars!
-      JWT_REFRESH_SECRET: dev-refresh-secret-that-is-at-least-32-chars!
-      NODE_ENV: production
-      LOG_LEVEL: info
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ticket
     depends_on:
-      postgres:
-        condition: service_healthy
-    command: >
-      sh -c "npx prisma migrate deploy && node dist/server.js"
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ticket
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    restart: unless-stopped
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

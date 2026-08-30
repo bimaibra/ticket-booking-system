@@ -22,6 +22,7 @@ pnpm-debug.log*
 /.vscode/
 /.idea/
 /.claude/
+/.agent/
 /.windsurf/
 /.opencode/
 /.gemini/
@@ -34,3 +35,4 @@ ehthumbs.db
 *.tmp
 *.temp
 
+/.agents/
